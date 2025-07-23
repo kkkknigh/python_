@@ -1,0 +1,4 @@
+gradio
+langchain
+faiss-cpu
+python == 3.6
