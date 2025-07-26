@@ -5,7 +5,7 @@ PDF 文档上传界面，只保存为固定路径
 import gradio as gr
 import os
 
-SAVE_PATH = "src/document/article.pdf"
+SAVE_PATH = "python_/src/document/article.pdf"
 
 def save_pdf_file(file):
     os.makedirs(os.path.dirname(SAVE_PATH), exist_ok=True)
