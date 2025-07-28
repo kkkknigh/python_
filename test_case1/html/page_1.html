@@ -1,0 +1,113 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A theoretical study on the surface and interfacial properties of Ni3P for the hydrogen evolution reaction</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            font-size: 1.8em;
+            text-align: center;
+            margin-bottom: 0.5em;
+            color: #0066cc;
+        }
+        h2 {
+            font-size: 1.4em;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.3em;
+            color: #0066cc;
+        }
+        .authors {
+            text-align: center;
+            font-style: italic;
+            margin-bottom: 1.5em;
+        }
+        .affiliations {
+            text-align: center;
+            font-size: 0.9em;
+            margin-bottom: 1.5em;
+        }
+        .abstract {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-left: 4px solid #0066cc;
+            margin-bottom: 1.5em;
+        }
+        .abstract-title {
+            font-weight: bold;
+            margin-bottom: 0.5em;
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 1em;
+        }
+        .citation {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 2em;
+            border-top: 1px solid #eee;
+            padding-top: 1em;
+        }
+        .reference {
+            font-size: 0.9em;
+            vertical-align: super;
+            color: #0066cc;
+        }
+        .journal-info {
+            font-size: 0.9em;
+            text-align: center;
+            margin-top: 2em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>A theoretical study on the surface and interfacial properties of Ni<sub>3</sub>P for the hydrogen evolution reaction<sup>†</sup></h1>
+    
+    <div class="authors">
+        Jun Hu,<sup>ab</sup> Shunli Zheng,<sup>a</sup> Xin Zhao,<sup>*a</sup> Xin Yao<sup>a</sup> and Zhong Chen<sup>*a</sup>
+    </div>
+    
+    <div class="affiliations">
+        <sup>a</sup>School of Materials Science and Engineering, Nanyang Technological University, 50 Nanyag Avenue, Singapore 639798. E-mail: xinzhao@ntu.edu.sg; ASZChen@ntu.edu.sg<br>
+        <sup>b</sup>School of Chemical Engineering, Northwest University, Xi'an, P. R. China 710069
+    </div>
+    
+    <div class="abstract">
+        <div class="abstract-title">Abstract</div>
+        <p>We report a comprehensive density functional theory (DFT) study on the stability, geometric structure, electronic characteristics, and catalytic activity for the hydrogen evolution reaction (HER) on low-index Ni<sub>3</sub>P crystal surfaces, namely, the (001), (100), (110), (101) and (111) planes with different surface terminations. The results indicate that P-rich and some stoichiometric surfaces are thermodynamically stable. Eight stable surfaces were selected to investigate the electronic characteristics and catalytic activity. The (110)B facet of Ni<sub>3</sub>P is indispensable for the HER, because it not only displays improved electrocatalytic activity, but also possesses suitable potential and high stability. Increasing the active sites through doping or enlarging the surface area could be a useful strategy to improve the HER activity further. Furthermore, it was found that Ni<sub>3</sub>P requires higher energies for decomposition in the absence of O<sub>2</sub>, although it is thermodynamically unstable in aqueous solutions with most pH values and potentials. This study provides important insights into the surface properties of Ni<sub>3</sub>P for water splitting and opens up an exciting opportunity to optimize the performance of solar energy conversion devices by synthesizing preferentially exposed catalyst facets.</p>
+    </div>
+    
+    <h2>Introduction</h2>
+    <p>The hydrogen evolution reaction (HER) by using electrochemical water splitting has long been considered as an important technology without any environmental pollution.<sup class="reference">1</sup> Among the cathode materials for water splitting, including transition metals and their dichalcogenides,<sup class="reference">2-5</sup> carbides,<sup class="reference">6,7</sup> borides,<sup class="reference">8</sup> and nitrides,<sup class="reference">9</sup> phosphides have attracted considerable attention in the field of electrochemical catalysis due to their many advantages such as earth-abundance, high catalytic activity, good stability and facile synthesis.<sup class="reference">10,11</sup> Nickel phosphide (Ni<sub>x</sub>P<sub>y</sub>) is one of the most promising candidates among transition metal phosphides. In these types of compounds, phosphorus has a lower catenation tendency and exhibits a wide variety of building blocks (cages, dumbbells, etc.) and superstructures (1D to 3D chains). Furthermore, Ni<sub>x</sub>P<sub>y</sub> often forms amorphous films which are immune to chemical attack at grain boundaries, and therefore they generally possess high corrosion resistance in acidic solutions and can only be dissolved in hot oxidising acids such as HNO<sub>3</sub>.<sup class="reference">12</sup></p>
+    
+    <p>Nickel phosphides have been reported in more than ten stoichiometric compositions,<sup class="reference">13-16</sup> among which Ni<sub>12</sub>P<sub>5</sub>, Ni<sub>2</sub>P, Ni<sub>5</sub>P<sub>4</sub>, and NiP<sub>2</sub> have attracted much attention for their synthesis, structure, and reactivity.<sup class="reference">17-19</sup> Ni<sub>3</sub>P, as the most Ni rich phosphide, has been mostly reported for its roles at the solder joint interface formed by reaction-induced crystallization. It has been reported that Ni<sub>3</sub>P can also be synthesized using electrochemical deposition,<sup class="reference">20,21</sup> solid state reactions<sup class="reference">22</sup> and hydrothermal reactions.<sup class="reference">23,24</sup> However, a few Ni rich phosphides are reported as the electro-cathode materials for hydrogen evolution.<sup class="reference">25</sup></p>
+    
+    <p>Recently, Jin et al. reported the HER properties of trinickel monophosphide (Ni<sub>3</sub>P) porous hollow nanospheres, which showed efficient catalytic performance. The overpotential required to reach a current density of 20 mA cm<sup>-2</sup> is as small as 99 mV in an acidic solution.<sup class="reference">26</sup> Pan et al. investigated the electrocatalytic properties for the HER of different types of nickel phosphides (Ni<sub>12</sub>P<sub>5</sub>, Ni<sub>2</sub>P and Ni<sub>5</sub>P<sub>4</sub>) and found that the catalytic properties followed the order of Ni<sub>5</sub>P<sub>4</sub> > Ni<sub>2</sub>P > Ni<sub>12</sub>P<sub>5</sub>, and their potentials at a current density of 10 mA cm<sup>-2</sup> are 118, 137 and 208 mV, respectively.<sup class="reference">18</sup> It was suggested that the Ni-rich phosphide has a relatively poor HER activity. However, Ni<sub>3</sub>P, as the most Ni rich phosphide, was found to be more active in the experiment.<sup class="reference">26</sup> The difference among the few existing reports indicates that it is crucial to obtain a comprehensive understanding of Ni<sub>3</sub>P for its roles in the HER.</p>
+    
+    <p>Recently, in situ experimental results of most catalysts show that facet orientations play crucial roles on catalytic activity.<sup class="reference">27-32</sup> These results show that facet orientation is an important consideration for the design and fabrication of highly efficient catalysts. However, among the theoretical</p>
+    
+    <div class="journal-info">
+        <p><strong>Journal of Materials Chemistry A</strong></p>
+        <p>Volume 6, 2018, Pages 7827-7834</p>
+        <p>Received 14th January 2018, Accepted 27th March 2018</p>
+        <p>DOI: 10.1039/c8ta00437d</p>
+    </div>
+    
+    <div class="citation">
+        † Electronic supplementary information (ESI) available. See DOI: 10.1039/c8ta00437d<br>
+        Cite this: <em>J. Mater. Chem. A</em>, 2018, <strong>6</strong>, 7827
+    </div>
+</body>
+</html>
+```

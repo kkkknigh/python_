@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeRF: Representing Scenes as Neural Radiance Fields for View Synthesis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Open Sans', sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            padding: 20px;
+        }
+        
+        .paper-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(to right, #2c3e50, #4a6491);
+            color: white;
+            padding: 40px 40px 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-family: 'Lora', serif;
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            line-height: 1.3;
+        }
+        
+        .authors {
+            margin: 15px 0;
+            font-size: 1.1rem;
+        }
+        
+        .author {
+            display: inline-block;
+            margin: 0 10px;
+            position: relative;
+        }
+        
+        .affiliations {
+            margin: 20px 0;
+            font-style: italic;
+            font-size: 0.95rem;
+        }
+        
+        .equal-contrib {
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+        
+        .metadata {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .arxiv-id {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            font-family: 'Lora', serif;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eaeaea;
+        }
+        
+        h3 {
+            font-family: 'Lora', serif;
+            color: #4a6491;
+            margin: 25px 0 15px;
+        }
+        
+        .abstract, .keywords {
+            background: #f8f9fa;
+            padding: 25px;
+            border-left: 4px solid #4a6491;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 30px;
+        }
+        
+        .abstract h2, .keywords h2 {
+            border: none;
+            padding: 0;
+            margin-top: 0;
+        }
+        
+        .keywords {
+            border-left-color: #3498db;
+        }
+        
+        p {
+            margin-bottom: 20px;
+            text-align: justify;
+        }
+        
+        .keyword-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .keyword {
+            background: #e3f2fd;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .figure {
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .figure img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .figure-caption {
+            font-style: italic;
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.95rem;
+        }
+        
+        .citation {
+            background: #f0f7ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+            font-size: 0.95rem;
+        }
+        
+        .citation-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .technical-contrib {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        .contrib-list {
+            list-style-type: none;
+            counter-reset: contrib-counter;
+        }
+        
+        .contrib-list li {
+            counter-increment: contrib-counter;
+            margin-bottom: 15px;
+            position: relative;
+            padding-left: 40px;
+        }
+        
+        .contrib-list li:before {
+            content: "[" counter(contrib-counter) "]";
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #4a6491;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+        
+        .formula {
+            background: #f5f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 25px 0;
+            font-family: monospace;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                padding: 25px;
+            }
+            
+            header {
+                padding: 30px 20px 15px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="paper-container">
+        <header>
+            <h1>NeRF: Representing Scenes as Neural Radiance Fields for View Synthesis</h1>
+            <div class="authors">
+                <span class="author">Ben Mildenhall<sup>1⋆</sup></span>
+                <span class="author">Pratul P. Srinivasan<sup>1⋆</sup></span>
+                <span class="author">Matthew Tancik<sup>1⋆</sup></span>
+                <span class="author">Jonathan T. Barron<sup>2</sup></span>
+                <span class="author">Ravi Ramamoorthi<sup>3</sup></span>
+                <span class="author">Ren Ng<sup>1</sup></span>
+            </div>
+            <div class="affiliations">
+                <sup>1</sup>UC Berkeley &nbsp; &nbsp;
+                <sup>2</sup>Google Research &nbsp; &nbsp;
+                <sup>3</sup>UC San Diego
+            </div>
+            <div class="equal-contrib">
+                <sup>⋆</sup>Authors contributed equally to this work.
+            </div>
+            <div class="metadata">
+                <div>arXiv:2003.08934v2 [cs.CV] 3 Aug 2020</div>
+            </div>
+        </header>
+        
+        <div class="content">
+            <section class="abstract">
+                <h2>Abstract</h2>
+                <p>We present a method that achieves state-of-the-art results for synthesizing novel views of complex scenes by optimizing an underlying continuous volumetric scene function using a sparse set of input views. Our algorithm represents a scene using a fully-connected (non-convolutional) deep network, whose input is a single continuous 5D coordinate (spatial location (x, y, z) and viewing direction (θ, φ)) and whose output is the volume density and view-dependent emitted radiance at that spatial location.</p >
+                <p>We synthesize views by querying 5D coordinates along camera rays and use classic volume rendering techniques to project the output colors and densities into an image. Because volume rendering is naturally differentiable, the only input required to optimize our representation is a set of images with known camera poses. We describe how to effectively optimize neural radiance fields to render photorealistic novel views of scenes with complicated geometry and appearance, and demonstrate results that outperform prior work on neural rendering and view synthesis. View synthesis results are best viewed as videos, so we urge readers to view our supplementary video for convincing comparisons.</p >
+            </section>
+            
+            <section class="keywords">
+                <h2>Keywords</h2>
+                <div class="keyword-list">
+                    <span class="keyword">scene representation</span>
+                    <span class="keyword">view synthesis</span>
+                    <span class="keyword">image-based rendering</span>
+                    <span class="keyword">volume rendering</span>
+                    <span class="keyword">3D deep learning</span>
+                </div>
+            </section>
+            
+            <section class="introduction">
+                <h2>1 Introduction</h2>
+                <p>In this work, we address the long-standing problem of view synthesis in a new way by directly optimizing parameters of a continuous 5D scene representation to minimize the error of rendering a set of captured images.</p >
+                <p>We represent a static scene as a continuous 5D function that outputs the radiance emitted in each direction (θ, φ) at each point (x, y, z) in space, and a density at each point which acts like a differential opacity controlling how much radiance is accumulated by a ray passing through (x, y, z). Our method optimizes a deep fully-connected neural network without any convolutional layers (often referred to as a multilayer perceptron or MLP) to represent this function by regressing from a single 5D coordinate (x, y, z, θ, φ) to a single volume density and view-dependent RGB color.</p >
+                
+                <div class="figure">
+                    < img src="https://images.unsplash.com/photo-1633287387306-f08b4b3671c6?q=80&w=1000" alt="NeRF visualization">
+                    <div class="figure-caption">Fig. 1: We present a method that optimizes a continuous 5D neural radiance field representation (volume density and view-dependent color at any continuous location) of a scene from a set of input images. We use techniques from volume rendering to accumulate samples of this scene representation along rays to render the scene from any viewpoint. Here, we visualize the set of 100 input views of the synthetic Drums scene randomly captured on a surrounding hemisphere, and we show two novel views rendered from our optimized NeRF representation.</div>
+                </div>
+                
+                <p>To render this neural radiance field (NeRF) from a particular viewpoint we: 1) march camera rays through the scene to generate a sampled set of 3D points, 2) use those points and their corresponding 2D viewing directions as input to the neural network to produce an output set of colors and densities, and 3) use classical volume rendering techniques to accumulate those colors and densities into a 2D image. Because this process is naturally differentiable, we can use gradient descent to optimize this model by minimizing the error between each observed image and the corresponding views rendered from our representation. Minimizing this error across multiple views encourages the network to predict a coherent model of the scene by assigning high volume densities and accurate colors to the locations that contain the true underlying scene content. Figure 2 visualizes this overall pipeline.</p >
+                
+                <div class="citation">
+                    <div class="citation-title">Representation Function:</div>
+                    <div class="formula">F(x, y, z, θ, φ) → (RGB, σ)</div>
+                    <p>Where (x, y, z) is spatial location, (θ, φ) is viewing direction, RGB is color, and σ is volume density.</p >
+                </div>
+                
+                <p>We find that the basic implementation of optimizing a neural radiance field representation for a complex scene does not converge to a sufficiently high-resolution representation and is inefficient in the required number of samples per camera ray. We address these issues by transforming input 5D coordinates with a positional encoding that enables the MLP to represent higher frequency functions, and we propose a hierarchical sampling procedure to reduce the number of queries required to adequately sample this high-frequency scene representation.</p >
+                
+                <div class="technical-contrib">
+                    <h3>Technical Contributions</h3>
+                    <ul class="contrib-list">
+                        <li>An approach for representing continuous scenes with complex geometry and materials as 5D neural radiance fields, parameterized as basic MLP networks.</li>
+                        <li>A differentiable rendering procedure based on classical volume rendering techniques, which we use to optimize these representations from standard RGB images. This includes a hierarchical sampling strategy to allocate the MLP's capacity towards space with visible scene content.</li>
+                        <li>A positional encoding to map each input 5D coordinate into a higher dimensional space, which enables us to successfully optimize neural radiance fields for representing high-frequency scene content.</li>
+                    </ul>
+                </div>
+                
+                <p>Our approach inherits the benefits of volumetric representations: both can represent complex real-world geometry and appearance and are well suited for gradient-based optimization using projected images. Crucially, our method overcomes the prohibitive storage costs of discretized voxel grids when modeling complex scenes at high-resolutions.</p >
+            </section>
+        </div>
+    </div>
+</body>
+</html>
