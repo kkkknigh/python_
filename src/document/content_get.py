@@ -1,12 +1,9 @@
 '''
-获取 PDF 中文字(OCR/元文本)和图片内容(元数据)
+获取 PDF 中文字(OCR/元文本)
 '''
-
 import fitz  
 import os
 import easyocr
-from PIL import Image
-from io import BytesIO
 
 ARTICLE_TEXT = None
 PDF_PATH = "src/document/article.pdf"
@@ -56,64 +53,6 @@ def text_ocr(pdf_path=PDF_PATH):
         f.write(" ".join(ARTICLE_TEXT))
 
     return ARTICLE_TEXT
-
-def pic_extract(pdf_path=PDF_PATH):
-    '''
-    提取 PDF 中的所有图片并保存为 PNG 文件
-    
-    该函数遍历 PDF 的每一页，提取其中的所有图片，进行格式转换后
-    保存为 PNG 格式的文件。支持 CMYK 到 RGB 的颜色空间转换。
-    
-    Args:
-        pdf_path (str, optional): PDF 文件路径。默认为 PDF_PATH 常量值。
-    
-    Returns:
-        list: 包含所有保存图片文件路径的列表
-    
-    Side Effects:
-        - 在 PDF 同目录下创建 picture 文件夹
-        - 保存提取的图片文件到 picture 文件夹中
-    
-    Note:
-        - 图片文件命名格式：page_{页码}_img_{图片序号}.png
-        - 自动处理 CMYK 颜色模式转换为 RGB
-        - 不支持的颜色模式会统一转换为 RGB
-    
-    Raises:
-        FileNotFoundError: 当 PDF 文件不存在时
-        IOError: 图片保存过程中的 IO 异常
-    '''
-    doc = fitz.open(pdf_path)
-    saved_files = []
-    
-    # 确保图片目录存在
-    picture_dir = os.path.join(os.path.dirname(pdf_path), "picture")
-    os.makedirs(picture_dir, exist_ok=True)
-
-    try:
-        img_count = 0
-        for page_num, page in enumerate(doc):
-            for img in page.get_images(full=True):
-                xref = img[0]
-                base_image = doc.extract_image(xref)
-                image_bytes = base_image["image"]
-                image = Image.open(BytesIO(image_bytes))
-
-                   #CMYK到RGB转换
-                if image.mode == 'CMYK':
-                    image = image.convert('RGB')
-                elif image.mode not in ['RGB', 'L']:
-                    image = image.convert('RGB')
-    
-                filename = f"page_{page_num + 1}_img_{img_count + 1}.png"
-                filepath = os.path.join(picture_dir, filename)
-                image.save(filepath, "png")
-                saved_files.append(filepath)
-                img_count += 1
-    finally:
-        doc.close()
-
-    return saved_files
 
 def text_extract(pdf_path=PDF_PATH):
     '''

@@ -1,7 +1,7 @@
 from openai import OpenAI
-import os
+import os, re
 
-DEEPSEEK_API_KEY = ''
+DEEPSEEK_API_KEY = 'sk-1b7afa90a6764df78928048a0da5f824'
 
 client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 
@@ -54,9 +54,48 @@ def chat_reset():
     CHAT_MESSAGE.clear()
     return CHAT_MESSAGE
 
+
+def clean_html_content(text):
+    """
+    清洗AI输出内容，提取可渲染的HTML文档
+    
+    Args:
+        text (str): 包含HTML内容的纯文本
+        
+    Returns:
+        str: 清洗后的HTML内容
+    """
+    if not text:
+        return ""
+    
+    text = text.strip()
+    
+    # 首先检查是否存在代码块中的HTML内容
+    code_block_match = re.search(r'```(?:html)?\s*(.*?)\s*```', text, re.DOTALL | re.IGNORECASE)
+    if code_block_match:
+        # 提取代码块中的内容
+        code_content = code_block_match.group(1).strip()
+        
+        # 检查代码块中是否包含HTML
+        if '<!DOCTYPE' in code_content or '<html' in code_content:
+            text = code_content
+    
+    # 匹配完整的HTML文档（包含DOCTYPE声明）
+    doctype_match = re.search(r'(<!DOCTYPE\s+html[^>]*>.*?</html>)', text, re.DOTALL | re.IGNORECASE)
+    if doctype_match:
+        return doctype_match.group(1)
+    
+    # 匹配html标签包围的内容
+    html_match = re.search(r'(<html[^>]*>.*?</html>)', text, re.DOTALL | re.IGNORECASE)
+    if html_match:
+        return html_match.group(1)
+    
+    # 如果都没找到，返回原文本
+    return text
+
 def html_convert(text):
     '''
-    将论文文本内容转换为 HTML 格式并分页保存到 html 文件夹
+    将论文文本内容转换为 HTML 格式并保存为.html文件
     
     Args:
         text (list or str): 要转换的文本内容，可以是字符串或字符串列表
@@ -75,7 +114,8 @@ def html_convert(text):
 3. 根据聊天历史考虑上下文关系，确保连续性
 5. 输出完整的HTML文档，包含<!DOCTYPE html>声明
 6. 添加基本且美观的CSS样式以提高可读性
-7. 确保输出内容可以直接保存为.html文件
+7. 出现的公式使用latex书写
+8. 确保输出内容可以直接保存为.html文件
 
 请不要添加任何HTML代码之外的解释文字。
 
@@ -89,10 +129,11 @@ def html_convert(text):
         text = [text]
     
     # 创建html文件夹
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    project_root = os.path.join(os.path.dirname(__file__), '..', '..')
+    current_dir = os.path.abspath(project_root)
     html_dir = os.path.join(current_dir, "html")
     os.makedirs(html_dir, exist_ok=True)
-    
+
     # 分页处理文件
     for i, page_text in enumerate(text, 1):
         try:
@@ -106,14 +147,14 @@ def html_convert(text):
             )
             html_history.append(response.choices[0].message)
             html_content = response.choices[0].message.content.strip()
+            # 清洗输出，获得纯html
+            html_content = clean_html_content(html_content)
             responses.append(html_content)
-            
             # 保存HTML文件
             html_filename = f"page_{i}.html"
             html_filepath = os.path.join(html_dir, html_filename)
             with open(html_filepath, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-            
+                    f.write(html_content)
         except Exception as e:
             error_msg = f"第{i}页转换失败: {str(e)}"
             print(error_msg)

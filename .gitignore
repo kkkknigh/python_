@@ -37,3 +37,9 @@ node_modules/
 
 # Specific to this project (if needed, adjust accordingly)
 # Add any project-specific files or directories you want
+
+temp/
+html/
+
+.vscode/
+.gradio/

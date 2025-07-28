@@ -22,8 +22,9 @@ sys.path.append(project_root)
 
 # 导入自定义模块
 try:
-    from document.content_get import text_ocr, pic_extract, text_extract
+    from document.content_get import text_ocr, text_extract
     from api.ds_fetch import html_convert
+    from document.picture_get import pic_extract, fig_screenshot
 except ImportError as e:
     print(f"导入模块失败: {e}")
     sys.exit(1)
@@ -71,6 +72,7 @@ def process_pdf_upload(file):
         # 5. 图片提取
         try:
             extracted_images = pic_extract(pdf_path)
+            screen_shoot_figures = fig_screenshot(pdf_path)
             results.append(f"✅ 图片提取成功: {len(extracted_images)} 张")
             if extracted_images:
                 picture_dir = os.path.dirname(extracted_images[0])
@@ -79,15 +81,15 @@ def process_pdf_upload(file):
             results.append(f"❌ 图片提取失败: {str(e)}")
         
         # 6. HTML转换
+        '''
         if best_pages:
             try:
-                # 截取前3000字符进行转换
                 html_results = html_convert(best_pages)
             except Exception as e:
                 results.append(f"❌ HTML转换失败: {str(e)}")
         else:
             results.append("⚠️ 无文本内容，跳过HTML转换")
-        
+        '''
         # 处理完成总结
         results.append("\n" + "="*40)
         results.append("🎉 核心处理流程完成")
@@ -174,4 +176,4 @@ def main():
         print(f"❌ 启动失败: {e}")
 
 if __name__ == "__main__":
-    main()
+    fig_screenshot("src/temp/article.pdf")
