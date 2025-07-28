@@ -7,6 +7,7 @@ PDF智能分析系统 - 简化版
 - PDF文件上传
 - 文字提取（OCR + 原生文本）
 - 图片提取
+- 截图
 - HTML转换
 """
 
@@ -14,6 +15,7 @@ import os
 import sys
 import gradio as gr
 import shutil
+from bs4 import BeautifulSoup
 
 # 添加项目根目录到 Python 路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,9 +24,10 @@ sys.path.append(project_root)
 
 # 导入自定义模块
 try:
-    from document.content_get import text_ocr, text_extract
-    from api.ds_fetch import html_convert
-    from document.picture_get import pic_extract, fig_screenshot
+    from src.document.content_get import text_ocr, text_extract
+    from src.api.ds_fetch import html_convert
+    from src.document.picture_get import pic_extract, fig_screenshot
+    from src.api.ds_fetch import translate
 except ImportError as e:
     print(f"导入模块失败: {e}")
     sys.exit(1)
@@ -74,14 +77,17 @@ def process_pdf_upload(file):
             extracted_images = pic_extract(pdf_path)
             screen_shoot_figures = fig_screenshot(pdf_path)
             results.append(f"✅ 图片提取成功: {len(extracted_images)} 张")
+            results.append(f"✅ 截图提取: {len(screen_shoot_figures)} 个")
             if extracted_images:
                 picture_dir = os.path.dirname(extracted_images[0])
                 results.append(f"📁 图片保存目录: {picture_dir}")
+            if screen_shoot_figures:
+                figures_dir = os.path.dirname(screen_shoot_figures[0]['screenshot_path'])
+                results.append(f"📁 Figure保存目录: {figures_dir}")
         except Exception as e:
             results.append(f"❌ 图片提取失败: {str(e)}")
         
         # 6. HTML转换
-        '''
         if best_pages:
             try:
                 html_results = html_convert(best_pages)
@@ -89,7 +95,7 @@ def process_pdf_upload(file):
                 results.append(f"❌ HTML转换失败: {str(e)}")
         else:
             results.append("⚠️ 无文本内容，跳过HTML转换")
-        '''
+
         # 处理完成总结
         results.append("\n" + "="*40)
         results.append("🎉 核心处理流程完成")
@@ -112,6 +118,7 @@ def create_interface():
         - 📤 PDF文件上传
         - 📝 文字提取（原生文本 + OCR识别）
         - 🖼️ 图片批量提取
+        - 📊 截图
         - 🌐 HTML格式转换
         
         上传PDF文件后系统将自动执行所有处理步骤
@@ -176,4 +183,10 @@ def main():
         print(f"❌ 启动失败: {e}")
 
 if __name__ == "__main__":
-    fig_screenshot("src/temp/article.pdf")
+    #main()
+    with open("html/page_1.html", 'r', encoding='utf-8') as f:
+            content = f.read()
+    output = str(translate(content))
+    os.makedirs("html/convert", exist_ok=True)
+    with open("html/convert/page_1.html", 'w', encoding='utf-8') as f:
+        f.write(output)

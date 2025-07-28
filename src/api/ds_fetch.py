@@ -115,7 +115,8 @@ def html_convert(text):
 5. 输出完整的HTML文档，包含<!DOCTYPE html>声明
 6. 添加基本且美观的CSS样式以提高可读性
 7. 出现的公式使用latex书写
-8. 确保输出内容可以直接保存为.html文件
+8. 在应该有图片的位置标记<img src="">
+9. 确保输出内容可以直接保存为.html文件
 
 请不要添加任何HTML代码之外的解释文字。
 
@@ -167,7 +168,7 @@ def translate(text_part):
     将 PDF 文本内容翻译成中文
     
     Args:
-        text_part (str): 要翻译的文本内容
+        text_part (str): 要翻译的文本内容(html)
     
     Returns:
         str: 翻译后的 HTML 格式中文内容
@@ -184,10 +185,10 @@ def translate(text_part):
 1. 保持学术论文的专业性和准确性
 2. 保留专业术语的原文（可在括号中标注）
 3. 输出为完整的HTML格式文档
-4. 包含<!DOCTYPE html>声明和完整的<html></html>标签
-5. 在HTML body中采用原文-翻译对照格式
+4. 开头为<!DOCTYPE html>声明或完整的<html></html>标签
+5. 在HTML body中采用原文-翻译-原文-翻译对照格式，分段落翻译
 6. 格式：<p class='original'>原文段落</p><p class='translation'>翻译段落</p>
-7. 添加基本的CSS样式以提高可读性
+7. 保持原文的CSS样式不变，译文可以适当与原文区分
 8. 不要添加任何HTML代码之外的解释文字
 
 请确保输出的内容可以直接保存为.html文件。"""
