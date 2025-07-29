@@ -106,21 +106,27 @@ def html_convert(text):
     Raises:
         Exception: API 调用失败时抛出异常
     '''
-    prompt_template = """请将以下一篇论文的第一页/下一页内容转换为规范的HTML格式：
+    prompt_template = """请将以下学术论文内容转换为规范的HTML格式：
 
-转换要求：
-1. 符合学术论文的HTML格式规范
-2. 自动识别和组织文章结构：标题、摘要、正文段落、引用等
-3. 根据聊天历史考虑上下文关系，确保连续性
-5. 输出完整的HTML文档，包含<!DOCTYPE html>声明
-6. 添加基本且美观的CSS样式以提高可读性
-7. 出现的公式使用latex书写
-8. 在应该有图片的位置标记<img src="">
-9. 确保输出内容可以直接保存为.html文件
+【转换要求】
+1. 输出格式：生成完整HTML文档，包含<!DOCTYPE html>声明、<head>和<body>标签
+2. 文档结构：识别并组织为标题、摘要、章节、段落、引用、图表说明等学术元素
+3. 页面连贯性：与之前页面保持一致的格式和样式，确保内容的连续性
+4. 排版美观：
+   - 使用响应式设计，正文宽度限制在800px以内
+   - 标题使用<h1>至<h4>标签，保持层次清晰
+   - 段落使用<p>标签，设置合适的行高(1.5-1.8)和段间距
+   - 字体大小16-18px，提高可读性
+5. 特殊元素处理：
+   - 公式：识别公式，使用<span class="math">$LaTeX公式$</span>标记，并用latex语法还原编辑公式
+   - 图片引用：识别"Figure/Fig.X"的文本，在其上方添加<div class="figure"><img src="图片路径占位" alt="图描述"><figcaption>图片说明</figcaption></div>
+   - 引用：使用<blockquote>或<cite>标签标记引用内容
+   - 参考文献：使用<ol class="references">和<li>标签列出
+6. 内嵌基本且美观的css样式，可以适当创意发挥以提高可读性
 
-请不要添加任何HTML代码之外的解释文字。
+请不要添加任何HTML代码之外的解释，直接输出可保存的完整HTML。
 
-待转换的下一页论文内容：
+【待转换的论文内容】
 {}"""
     
     responses = []
@@ -132,7 +138,7 @@ def html_convert(text):
     # 创建html文件夹
     project_root = os.path.join(os.path.dirname(__file__), '..', '..')
     current_dir = os.path.abspath(project_root)
-    html_dir = os.path.join(current_dir, "html")
+    html_dir = os.path.join(current_dir, "temp", "html", "original")
     os.makedirs(html_dir, exist_ok=True)
 
     # 分页处理文件
@@ -188,8 +194,9 @@ def translate(text_part):
 4. 开头为<!DOCTYPE html>声明或完整的<html></html>标签
 5. 在HTML body中采用原文-翻译-原文-翻译对照格式，分段落翻译
 6. 格式：<p class='original'>原文段落</p><p class='translation'>翻译段落</p>
-7. 保持原文的CSS样式不变，译文可以适当与原文区分
-8. 不要添加任何HTML代码之外的解释文字
+7. 除译文外保持原文的CSS样式不变
+8. 除添加翻译段落外不要改变原html
+9. 不要添加任何HTML代码之外的解释文字
 
 请确保输出的内容可以直接保存为.html文件。"""
 
@@ -197,10 +204,10 @@ def translate(text_part):
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+            temperature=0.2,
             max_tokens=8192
         )
-        return response.choices[0].message.content.strip()
+        return clean_html_content(response.choices[0].message.content.strip())
     except Exception as e:
         raise e
 

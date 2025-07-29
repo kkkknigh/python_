@@ -3,12 +3,12 @@
 '''
 import fitz  
 import os
-import easyocr
+#import easyocr
 
 ARTICLE_TEXT = None
 PDF_PATH = "src/document/article.pdf"
 
-reader = easyocr.Reader(['en'])
+#reader = easyocr.Reader(['en'])
 
 def text_ocr(pdf_path=PDF_PATH):
     '''
