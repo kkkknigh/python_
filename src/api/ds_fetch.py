@@ -1,9 +1,41 @@
 from openai import OpenAI
 import os, re
+import sys
+import argparse
 
 DEEPSEEK_API_KEY = 'sk-1b7afa90a6764df78928048a0da5f824'
 
-client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+
+def get_api_key():
+    """
+    获取API密钥
+    
+    Returns:
+        str: API密钥
+    """
+    # 1. 优先使用全局变量中的API密钥
+    global DEEPSEEK_API_KEY
+    if DEEPSEEK_API_KEY and DEEPSEEK_API_KEY.startswith('sk-'):
+        return DEEPSEEK_API_KEY
+    
+    # 2. 尝试从环境变量获取
+    api_key = os.getenv('DEEPSEEK_API_KEY')
+    if api_key:
+        return api_key
+    
+    # 如果都没有，抛出异常
+    raise ValueError("未找到API密钥。请通过以下方式之一提供：\n"
+                   "1. 修改代码中的全局变量 DEEPSEEK_API_KEY\n"
+                   "2. 环境变量: export DEEPSEEK_API_KEY=YOUR_KEY\n"
+                   "3. 命令行参数: --api-key YOUR_KEY\n"
+                   "4. 交互式输入")
+# 初始化客户端
+try:
+    DEEPSEEK_API_KEY = get_api_key()
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+except ValueError as e:
+    print(f"API密钥配置错误: {e}")
+    client = None
 
 # 存储聊天上下文
 CHAT_MESSAGE = []
@@ -21,6 +53,8 @@ def chat(query, text, target=""):
         str: AI 的回复。
     '''
 
+    if client is None:
+        raise RuntimeError("API客户端未初始化，请检查API密钥配置")
     #提示词
     prompt = f"""你是一个善解人意的助教，正在帮助同学理解论文内容。
     文章内容：{text}
@@ -106,6 +140,10 @@ def html_convert(text):
     Raises:
         Exception: API 调用失败时抛出异常
     '''
+
+    if client is None:
+        raise RuntimeError("API客户端未初始化，请检查API密钥配置")
+    
     prompt_template = """请将以下学术论文内容转换为规范的HTML格式：
 
 【转换要求】
@@ -183,6 +221,9 @@ def translate(text_part):
         Exception: API 调用失败时抛出异常
     '''
     
+    if client is None:
+        raise RuntimeError("API客户端未初始化，请检查API密钥配置")
+    
     prompt = f"""请将以下英文论文内容翻译成中文：
 
 {text_part}
@@ -226,6 +267,9 @@ def recommend(text):
         Exception: API 调用失败时抛出异常
     '''
 
+    if client is None:
+        raise RuntimeError("API客户端未初始化，请检查API密钥配置")
+    
     prompt = f"""基于以下论文内容，为读者推荐相关论文：
 
 {text}
@@ -266,6 +310,9 @@ def analyze(text):
         Exception: API 调用失败时抛出异常
     '''
 
+    if client is None:
+        raise RuntimeError("API客户端未初始化，请检查API密钥配置")
+    
     prompt = f"""请对以下论文进行深度分析：
 
 {text}

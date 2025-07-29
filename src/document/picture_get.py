@@ -1,6 +1,12 @@
-'''
-提取图片内容(元数据/截图)
-'''
+"""
+PDF图片提取模块
+
+功能：
+- 提取PDF中的嵌入图片并转换为PNG格式  
+- 智能过滤无关图片（logo、装饰图等）
+- 基于Figure标题的高精度截图提取
+- 支持多种标题格式（Fig./Figure，大小写不敏感）
+"""
 
 from PIL import Image
 from io import BytesIO
@@ -11,7 +17,17 @@ import os
 PDF_PATH = "src/document/article.pdf"
 
 def pic_extract(pdf_path=PDF_PATH):
-    '''提取 PDF 中的所有图片并保存为 PNG 文件，支持 CMYK 到 RGB 转换，过滤无关图片'''
+    """
+    提取PDF中的学术相关图片并保存为PNG文件
+    
+    Args:
+        pdf_path: PDF文件路径
+    
+    Returns:
+        list: 保存的图片文件路径列表
+    
+    特点：支持CMYK转RGB，智能过滤装饰图，按页码命名
+    """
     doc = fitz.open(pdf_path)
     saved_files = []
     picture_dir = os.path.join(os.path.dirname(pdf_path), "picture")
@@ -51,7 +67,11 @@ def pic_extract(pdf_path=PDF_PATH):
     return saved_files
 
 def _is_academic_relevant_image(page, img_rect, min_size=50):
-    '''判断图片是否与学术内容相关，过滤商标、logo等无关图片'''
+    """
+    判断图片是否为学术相关内容
+    
+    筛选策略：尺寸、位置、宽高比、周围文本关键词
+    """
     page_rect = page.rect
     
     # 1. 尺寸筛选：过小的图片通常是装饰性的
@@ -116,7 +136,17 @@ def _is_academic_relevant_image(page, img_rect, min_size=50):
 
 
 def fig_screenshot(pdf_path=PDF_PATH):
-    '''以截图形式提取 PDF 中的 Figure，支持各种大小写格式，8x高精度截图'''
+    """
+    提取PDF中的Figure图表（高精度截图）
+    
+    Args:
+        pdf_path: PDF文件路径
+    
+    Returns:
+        list: figure信息字典列表，包含页码、编号、标题、截图路径等
+    
+    特点：支持多种标题格式，智能定位，8倍高精度截图
+    """
     doc = fitz.open(pdf_path)
     figures = []
     figures_dir = os.path.join(os.path.dirname(pdf_path), "figures")
@@ -150,7 +180,7 @@ def fig_screenshot(pdf_path=PDF_PATH):
     return figures
 
 def _find_caption_position(page, fig_num):
-    '''查找 figure 标题位置，支持多种格式和大小写'''
+    """查找figure标题位置，支持fig./Fig./Figure等格式"""
     blocks = page.get_text("dict")["blocks"]
     # 支持所有大小写组合  
     patterns = [
@@ -175,7 +205,7 @@ def _find_caption_position(page, fig_num):
     return None
 
 def _has_image_above(page, caption_rect, tolerance=10):
-    '''检查标题上方是否有图片，用于筛选真正的图片标题'''
+    """检查标题上方是否有图片，通过图片对象和文字密度验证"""
     blocks = page.get_text("dict")["blocks"]
     text_blocks = [fitz.Rect(block["bbox"]) for block in blocks if "lines" in block]
     text_blocks.sort(key=lambda rect: rect.y0)
@@ -208,19 +238,19 @@ def _has_image_above(page, caption_rect, tolerance=10):
     return total_area > 0 and text_area / total_area < 0.3
 
 def _rects_overlap(rect1, rect2):
-    '''检查矩形是否重叠'''
+    """检查两个矩形是否重叠"""
     return not (rect1.x1 <= rect2.x0 or rect2.x1 <= rect1.x0 or 
                 rect1.y1 <= rect2.y0 or rect2.y1 <= rect1.y0)
 
 def _get_overlap_rect(rect1, rect2):
-    '''获取矩形重叠区域'''
+    """获取两个矩形的重叠区域"""
     if not _rects_overlap(rect1, rect2):
         return None
     return fitz.Rect(max(rect1.x0, rect2.x0), max(rect1.y0, rect2.y0),
                      min(rect1.x1, rect2.x1), min(rect1.y1, rect2.y1))
 
 def _estimate_figure_area(page, caption_rect):
-    '''估算 figure 显示区域，确保不切掉图片'''
+    """估算figure显示区域，基于相关图片和文本块分析"""
     page_rect = page.rect
     
     # 找到相关图片
@@ -270,7 +300,7 @@ def _estimate_figure_area(page, caption_rect):
     return fitz.Rect(left_boundary, top_boundary, right_boundary, caption_rect.y0 - 10)
 
 def _screenshot_figure(page, figure_rect, page_num, fig_num, output_dir):
-    '''高精度截图保存 figure 区域'''
+    """高精度截图保存figure区域（8倍缩放）"""
     # 验证区域有效性
     page_rect = page.rect
     if figure_rect.width <= 0 or figure_rect.height <= 0:

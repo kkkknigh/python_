@@ -1,20 +1,29 @@
-'''
-整合原文+翻译+图片，获得可显示在阅读器上的文本
-'''
+"""
+HTML内容与图片整合模块
+
+功能：
+- 替换HTML中的图片占位符为实际图片路径
+- 智能匹配图片文件（常规图片和图表截图）
+- 支持批量处理多个HTML文件
+"""
 
 import os
 import re
 import glob
 
 def html_pic_replace(html_str, page_):
-    '''
+    """
+    替换HTML文档中的图片占位符为实际图片路径
+    
     Args:
-        html_str (str): HTML文件内容字符串
-        page_ (int): 页码，用于匹配对应的图片文件
+        html_str: 待处理的HTML内容
+        page_: 页码，用于匹配对应页面的图片
     
     Returns:
         str: 替换图片路径后的HTML内容
-    '''
+    
+    特点：智能匹配图片数量，优先选择最佳匹配的图片目录
+    """
     
     # 定义图片目录路径
     picture_dir = "temp/picture"
@@ -144,16 +153,18 @@ def html_pic_replace(html_str, page_):
     return modified_html
 
 def batch_replace_html_images(html_dir="temp/html/original", output_dir="temp/html/translated"):
-    '''
+    """
     批量处理HTML文件，替换其中的图片引用
     
     Args:
-        html_dir (str): 包含HTML文件的目录
-        output_dir (str): 输出目录
+        html_dir: 输入目录
+        output_dir: 输出目录
     
     Returns:
-        list: 处理成功的文件列表
-    '''
+        list: 成功处理的文件路径列表
+    
+    特点：自动提取页码，逐个处理HTML文件
+    """
     
     if not os.path.exists(html_dir):
         return []
