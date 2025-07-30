@@ -319,7 +319,7 @@ def main():
         demo.launch(
             server_port=args.port,
             server_name=args.host,
-            share=args.share,
+            share=True,
             show_error=True,
             quiet=False,
             inbrowser=True,

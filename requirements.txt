@@ -7,3 +7,10 @@ pytesseract>=0.3.10
 easyocr
 beautifulsoup4 
 lxml
+numpy>=1.21.0
+pathlib
+argparse
+threading
+shutil
+uuid
+re

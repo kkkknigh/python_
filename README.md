@@ -1,148 +1,193 @@
-#gradio 论文阅读器
+# 🚀 快速开始指南
 
+## 三步启动 AI PDF Reader
 
-
-## 1. 功能
-
-
-
-~~~mermaid
-graph TD
-A[用户上传] --> B[文件处理]
-B --> C[文档阅读器]
-C --> D[翻译]
-C --> G[答疑]
-C --> E[关键解析]
-C --> F[拓展推荐]
-
-~~~
-
-
-
-## 2. 实现路径
-
-* 文件处理
-  * PDF阅读：OCR获取文本
-
-* 翻译
-
-  * 上传文档后调用API进行整篇文章的翻译
-
-* 答疑
-
-  * 界面提供AI聊天框，针对文章内容与知识库内容进行答疑
-
-* 关键解析
-
-  * 上传文档后调用API解析文章关键概念与技术
-  * 界面可收缩
-
-* 拓展推荐
-
-  * 上传文章后调用API进行相关论文推荐
-
-  * 爬虫爬取对应论文后显示资源（不确定资源可获得性）
-
-  * 界面可收缩
-
-
-
-##3. 组织架构
-
-### 3.1. 项目目录结构
-
-```
-AiReader/
-├── src/                      # 源代码
-│   ├── ui/                   # 界面模块
-|       ├── document_upload.py     # 上传文件界面
-|       ├── document_read.py       # 论文阅读界面
-|       ├── document_chat.py       # 答疑聊天界面
-|       ├── block.py               # 可收缩框，打开为相关推荐和关键解析
-│   ├── api/                  # API 接口模块，对接LLM
-|       ├── document_translate.py  # 文档翻译
-|       ├── document_recommend.py  # 相关阅读推荐
-|       ├── document_chat.py       # 聊天
-|       └── document_analysize.py  # 文章关键解析
-│   ├── document_process/  # 文档处理模块
-|       ├── document_process.py  # 文档上传与PDF处理
-│   ├── main.py               # 主程序入口
-├── docs/                     # 文档
-├── README.md                 # 说明文档
-└── requirements.txt          # 依赖说明文件
+### 步骤 1: 安装依赖
+```bash
+pip install -r requirements.txt
 ```
 
-### 3.2. 模块划分
+### 步骤 2: 启动应用
+```bash
+python main.py --api-key sk-your-deepseek-api-key
+```
 
-*   **ui**: 负责用户界面，使用 Gradio 构建。
-*   **api**: 负责调用各种 API，例如翻译，答疑，关键解析，拓展推荐等。
-*   **document\_processing**: 负责文档的上传和存储。
+### 步骤 3: 打开浏览器
+访问：http://localhost:7860
 
-### 3.3. 技术栈
+---
 
-*   Python
-*   Gradio
-*   OpenaiAPI
-*   论文处理 (PDF文字阅读，图表处理，图片处理？)
-    * PyMuPDF：文本，图片
+## 🔑 获取 API 密钥
 
-### 3.4. 部署架构
+1. 访问 [DeepSeek 平台](https://platform.deepseek.com/)
+2. 注册账号并登录
+3. 在 API Keys 页面创建新密钥
+4. 复制密钥（格式：sk-xxxxxx）
 
-*   本地部署
+---
+
+## 📱 使用方法
+
+1. **上传PDF** - 点击"上传PDF"按钮
+2. **开始处理** - 点击"开始处理"等待完成  
+3. **浏览内容** - 使用翻页按钮浏览
+4. **AI问答** - 在右侧聊天框提问
+
+---
+
+## ⚡ 一键启动
+
+### Windows 用户
+```cmd
+# 双击运行 start.bat 脚本
+start.bat
+
+# 或在命令行中执行
+.\start.bat
+```
+
+### Linux/Mac 用户  
+```bash
+# 给脚本执行权限
+chmod +x start.sh
+
+# 运行启动脚本
+./start.sh
+```
+
+> 💡 启动脚本会自动：
+> - 检查 Python 环境
+> - 创建虚拟环境
+> - 安装依赖包
+> - 配置 API 密钥
+> - 启动应用服务
+
+---
+
+## 🛠️ 常用命令
+
+```bash
+# 基本启动
+python main.py --api-key sk-your-deepseek-api-key
+
+# 自定义端口
+python main.py --api-key sk-xxx --port 8080
+
+# 允许外部访问
+python main.py --api-key sk-xxx --host 0.0.0.0
+
+# 生成分享链接
+python main.py --api-key sk-xxx --share
+
+# 组合使用多个参数
+python main.py --api-key sk-xxx --port 8080 --host 0.0.0.0 --share
+```
+
+---
+
+## 📋 详细启动流程
+
+### Windows 用户
+
+#### 方法一：使用命令提示符 (CMD)
+```cmd
+# 1. 打开命令提示符，导航到项目目录
+cd C:\path\to\python_ai\python_
+
+# 2. 创建虚拟环境（推荐）
+python -m venv venv
+
+# 3. 激活虚拟环境
+venv\Scripts\activate
+
+# 4. 升级pip
+python -m pip install --upgrade pip
+
+# 5. 安装依赖包
+pip install -r requirements.txt
+
+# 6. 设置API密钥（临时）
+set DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+
+# 7. 启动应用
+python main.py
+```
+
+#### 方法二：使用PowerShell
+```powershell
+# 1. 打开PowerShell，导航到项目目录
+cd C:\path\to\python_ai\python_
+
+# 2. 创建虚拟环境
+python -m venv venv
+
+# 3. 激活虚拟环境
+.\venv\Scripts\Activate.ps1
+
+# 4. 安装依赖
+pip install -r requirements.txt
+
+# 5. 设置API密钥
+$env:DEEPSEEK_API_KEY="sk-your-deepseek-api-key"
+
+# 6. 启动应用
+python main.py
+```
+
+### Linux/Mac 用户
+
+#### 使用终端
+```bash
+# 1. 打开终端，导航到项目目录
+cd /path/to/python_ai/python_
+
+# 2. 创建虚拟环境（推荐）
+python3 -m venv venv
+
+# 3. 激活虚拟环境
+source venv/bin/activate
+
+# 4. 升级pip
+pip install --upgrade pip
+
+# 5. 安装依赖包
+pip install -r requirements.txt
+
+# 6. 设置API密钥
+export DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+
+# 7. 启动应用
+python main.py
+```
+
+---
+
+## 📝 环境变量配置
+
+### Windows 永久配置
+```cmd
+# 使用setx命令永久设置
+setx DEEPSEEK_API_KEY "sk-your-deepseek-api-key"
+
+# 重启命令提示符后生效
+```
+
+### Linux/Mac 永久配置
+```bash
+# 添加到shell配置文件
+echo 'export DEEPSEEK_API_KEY=sk-your-deepseek-api-key' >> ~/.bashrc
+
+# 重新加载配置
+source ~/.bashrc
+```
+
+---
+
+## 🆘 遇到问题？
+
+1. **端口被占用** → 更换端口：`--port 8080`
+2. **API密钥错误** → 检查密钥格式和有效性
+3. **依赖安装失败** → 尝试：`pip install --upgrade pip`
+4. **无法访问** → 检查防火墙设置
 
 
-
-## 4. 实现细节
-
-1. 文件上传
-2. PDF阅读 （此处有困难）
-   * 获取原文文字
-   * 获取原文图片/表格
-3. 翻译结果处理 
-   * 获取翻译结果，分段与原文对齐（此处不确定能否实现）
-4. 相关阅读/关键技术处理获得
-5. 论文阅读界面呈现
-   * 倾向于分段呈现翻译结果，采用原文-翻译-原文-翻译形式（此处有困难）
-6. 聊天
-   * 页面右方聊天框，UI参考github copilot
-   * 选中（如何选中?）对应内容进行问答
-7. 界面上方收缩框
-   * 相关阅读推荐
-     * 网页抓取获得相关资源（不确定可行性，ai可能会编论文，网站搜索不确定能否解决问题）
-     * 文本形式呈现
-   * 关键点解析
-     * 分条呈现，一次性生成，后续不再改动
-
-~~~mermaid
-graph TD
-A[PDF文件] 
-A --无多模态支持-->A1[PDF]
-A1 -- OCR获取文本 --> B[原文文本]
-B --API调用--> F[相关阅读推荐]
-F --网页资源抓取 -->J[相关论文资源]
-B --API调用--> G[关键要点]
-B -- API调用 --> C[翻译文本]
-A1 -- 获取图片 --> D[原文] 
-C -- 翻译与原文分段对齐 --> E[最终呈现文本:html]
-D --图片搜索后与原文对齐--> E
-E --选中聊天--> H[AI答疑]
-E --侧边栏聊天 --> I[AI聊天框]
-
-
-A --多模态支持-->A2[PDF]
-
-A2--API调用--> C1[处理后文本]
-A2--API调用--> B1[关键要点]
-A2--API调用--> D1[相关阅读推荐]
-D1 --网页资源抓取 -->J1[相关论文资源]
-C1 --渲染-->E
-~~~
-
-### 4.2 页面处理细节
-* PDF上传框：上传后系统读入PDF并且存储到指定路径
-* 开始处理框：点击后触发PDF处理事件（顺序处理每页PDF）
-* 阅读显示框：以html形式显示转换后的PDF页面
-  * 后台存储当前PDF翻译状态：第几页
-  * 定时更新页面处理状态
-  * 设置列表存储每页的内容，根据执行状态定时更新
-* 翻页框：向前翻译时正确执行，向后翻页时
