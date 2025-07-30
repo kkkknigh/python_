@@ -5,7 +5,9 @@ import threading
 import argparse
 import sys
 import re
+import uuid
 from pathlib import Path
+import json
 
 import gradio as gr
 import fitz
@@ -18,17 +20,22 @@ from src.ui.gradio_ui import create_reader_ui
 from src.api.ds_fetch import chat as api_chat, html_convert, translate
 from src.document.content_get import text_extract
 from src.document.picture_get import pic_extract, fig_screenshot
-from src.document.content_integrate import batch_replace_html_images
+from src.document.content_integrate import html_img_replace
 
-# 全局变量跟踪处理状态
-processing_status = {}
-background_tasks = {}
+# 使用线程锁保护全局状态
+status_lock = threading.Lock()
+processing_status = {"status": "idle", "message": "等待处理", "completed_pages": [], "progress": 0}
 
 def setup_environment():
     """设置环境和创建必要目录"""
     temp_dir = project_root / "temp"
-    temp_dir.mkdir(exist_ok=True)
     
+    # 清除已存在的目录
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    
+    # 重新创建目录
+    temp_dir.mkdir(exist_ok=True)
     
     for subdir in ["html/original", "html/translated", "html/final", "picture", "figures"]:
         (temp_dir / subdir).mkdir(parents=True, exist_ok=True)
@@ -39,7 +46,10 @@ def get_temp_dir():
     return project_root/"temp"
 
 def load_html(temp_dir):
-    """获取转化后html"""
+    """
+    获取可供显示的的html
+    优先级：/final > /original > text_ori.txt
+    """
     html_dir = temp_dir / "html" / "final"
     if html_dir.exists():
         html_files = sorted(html_dir.glob("*.html"))
@@ -53,6 +63,19 @@ def load_html(temp_dir):
                     html_contents.append("<p>文件读取失败</p>")
             return html_contents
     
+    html_dir_ori = temp_dir / "html" / "original"
+    if html_dir_ori.exists():
+        html_files = sorted(html_dir_ori.glob("*.html"))
+        if html_files:
+            html_contents = []
+            for html_file in html_files:
+                try:
+                    with open(html_file, 'r', encoding='utf-8') as f:
+                        html_contents.append(f.read())
+                except Exception:
+                    html_contents.append("<p>文件读取失败</p>")
+            return html_contents
+        
     text_file = temp_dir / "text_ori.txt"
     if text_file.exists():
         try:
@@ -65,40 +88,165 @@ def load_html(temp_dir):
     
     return ["<p>未找到可显示的文档内容</p>"]
 
-def process_uploaded_pdf(file):
-    """处理PDF"""
+def process_pdf_background(pdf_path):
+    """后台异步处理PDF"""
+    global  processing_status
+    completed_pages = []
+    try:
+        # 1. 图片提取
+        processing_status = {"status": "processing", "message": "图片提取中", "completed_pages": completed_pages, "progress": 5}
+        pic_paths = pic_extract(pdf_path)
+        fig_paths = fig_screenshot(pdf_path)
+        if (not pic_paths) and (fig_paths):
+            processing_status = {"status": "error", "message": "图片提取失败", "completed_pages": completed_pages, "progress": 5}
+            return
+          
+        # 2. 文字提取
+        processing_status = {"status": "processing", "message": "文本提取中", "completed_pages": completed_pages, "progress": 10}
+        text_pages = text_extract(str(pdf_path))
+        if not text_pages:
+            processing_status = {"status": "error", "message": "文本提取失败", "completed_pages": completed_pages,  "progress": 10}
+            return
+        
+        total_pages = len(text_pages)
+        
+        # 3. 依次处理所有页面
+        temp_dir = get_temp_dir()
+        
+        for i, text_page in enumerate(text_pages):
+            page_num = i+1
+            processing_status = {
+                "status": "processing", 
+                "message": f"处理第 {page_num}页html转换中", 
+                "completed_pages": completed_pages,
+                "progress": 90*i/total_pages + 10
+            }
+            
+            # 1.HTML转换 
+            html_page = html_convert(text_page, page_num)
+            if not html_page:
+                processing_status = {
+                    "status": "error", 
+                    "message": f"处理第 {page_num}页html转换失败", 
+                    "completed_pages": completed_pages,
+                    "progress": 90*i/total_pages + 10
+                }
+                return
+            
+            # 2.翻译HTML
+            processing_status = {
+                "status": "processing", 
+                "message": f"翻译第 {page_num}页中", 
+                "completed_pages": completed_pages,
+                "progress": 90*i/total_pages + 10 + 45/total_pages
+            }
+
+            translated_html = translate(html_page, page_num)
+            if not translated_html:
+                processing_status = {
+                    "status": "error", 
+                    "message": f"翻译第 {page_num}页失败", 
+                    "completed_pages": completed_pages,
+                    "progress": 90*i/total_pages + 10 + 45/total_pages
+                }
+                return
+            
+            translated_file_path = temp_dir / "html" / "translated"/ f"page_{page_num}.html"
+            
+            # 3. 图片嵌入
+            processing_status = {
+                "status": "processing", 
+                "message": f"整合第 {page_num}页图片中", 
+                "completed_pages": completed_pages,
+                "progress": 90*i/total_pages + 10 + 45/total_pages
+            }
+            final_html = html_img_replace(str(translated_file_path), output_dir=str(temp_dir / "html" / "final"))
+            if not final_html:
+                processing_status = {
+                    "status": "error", 
+                    "message": f"整合第 {page_num}页图片失败", 
+                    "completed_pages": completed_pages,
+                    "progress": 90*i/total_pages + 10 + 45/total_pages
+                }
+                return
+            
+            # 页面完成，添加到完成列表
+            completed_pages.append(page_num)
+            processing_status = {
+                "status": "page_completed", 
+                "message": f"第 {page_num} 页处理完成！({page_num}/{total_pages})", 
+                "completed_pages": completed_pages,
+                "progress": 90*i/total_pages + 10 + 45/total_pages
+            }
+
+        processing_status = {
+            "status": "processing", 
+            "message": "所有页面处理完成，正在最终整理中", 
+            "completed_pages": completed_pages,
+            "progress": 99
+        }
+        
+        processing_status = {
+            "status": "completed", 
+            "message": f"处理完成！共处理 {total_pages} 页", 
+            "completed_pages": completed_pages,
+            "progress": 100
+        }
+        
+    except Exception as e:
+        processing_status = {
+            "status": "error", 
+            "message": f"PDF处理失败: {str(e)}",
+            "completed_pages": completed_pages,
+            "progress": 0
+        }
+
+def start_pdf_processing(file):
+    """启动PDF处理任务"""
     if file is None:
-        return "请选择PDF文件", [], "", "<p>请上传PDF文件</p>", 0, "第 **-** 页 / 共 **0** 页", "ready"
+        return "错误：未选择任何文件", None
     
     try:
         temp_dir = get_temp_dir()
-        os.makedirs(temp_dir, exist_ok=True)
         
-        # 保存上传的PDF文件
-        file_name = "article.pdf"
-        pdf_path = os.path.join(temp_dir, file_name)
-        shutil.copy2(file.name, pdf_path)
+        # 清理旧文件
+        for cleanup_dir in ["html", "picture", "figures"]:
+            cleanup_path = temp_dir / cleanup_dir
+            if cleanup_path.exists():
+                shutil.rmtree(cleanup_path)
+        
+        # 重新创建目录
+        for subdir in ["html/original", "html/translated", "html/final", "picture", "figures"]:
+            (temp_dir / subdir).mkdir(parents=True, exist_ok=True)
 
-        # 文字提取
-        text_pages = text_extract(str(pdf_path))
-
-        # 图片提取
-        pic_extract(str(pdf_path))
-        fig_screenshot(pdf_path)
-
-        # html转化
-        html_pages = html_convert(text_pages)
-
-        # 翻译
-        for html_ in html_pages:
-            translate(html_)
-
-        # 添加图片
-        batch_replace_html_images()
-            
+        # 保存PDF文件
+        pdf_path = temp_dir / "article.pdf"
+        shutil.copy2(file.name, str(pdf_path))
+    
+        # 启动后台处理线程
+        thread = threading.Thread(target=process_pdf_background, args=(str(pdf_path),))
+        thread.daemon = True
+        thread.start()
+        
+        return "处理已开始，请等待..."
+        
     except Exception as e:
-        error_msg = f"PDF处理失败: {str(e)}"
-        return error_msg, [], "", "<p>PDF处理失败</p>", 0, "error"
+        return f"启动处理失败: {str(e)}"
+
+def check_processing_status():
+    """检查处理状态"""
+    status = processing_status
+    
+    if status["status"] == "processing":
+        return status["message"], False, status.get("progress", 0), status.get("completed_pages", [])
+    elif status["status"] == "page_completed":
+        return status["message"], False, status.get("progress", 0), status.get("completed_pages", [])
+    elif status["status"] == "completed":
+        return status["message"], True, 100, status.get("completed_pages", [])
+    elif status["status"] == "error":
+        return status["message"], True, 0, status.get("completed_pages", [])
+    else:
+        return "未知状态", False, 0, []
 
 def main():
     parser = argparse.ArgumentParser(
@@ -129,10 +277,11 @@ def main():
     
     try:
         demo = create_reader_ui(
-            get_temp_dir_func=get_temp_dir,
-            load_documents_func=load_html,
-            process_pdf_func=process_uploaded_pdf,
-            chat_func=api_chat
+            get_temp_dir,
+            load_html,
+            start_pdf_processing,
+            check_processing_status,
+            api_chat
         )
         
         demo.launch(

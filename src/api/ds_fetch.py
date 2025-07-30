@@ -127,15 +127,17 @@ def clean_html_content(text):
     # 如果都没找到，返回原文本
     return text
 
-def html_convert(text):
+html_history = []  # html转换历史，保持风格一致
+
+def html_convert(page_text, page_num):
     '''
     将论文文本内容转换为 HTML 格式并保存为.html文件
     
     Args:
-        text (list or str): 要转换的文本内容，可以是字符串或字符串列表
+        text (str): 要转换的文本内容，字符串，为原论文某页的文本
     
     Returns:
-        list: 包含每页 HTML 内容的列表
+        str: 该页 HTML 内容
     
     Raises:
         Exception: API 调用失败时抛出异常
@@ -144,7 +146,7 @@ def html_convert(text):
     if client is None:
         raise RuntimeError("API客户端未初始化，请检查API密钥配置")
     
-    prompt_template = """请将以下学术论文内容转换为规范的HTML格式：
+    prompt = f"""请将以下学术论文内容转换为规范的HTML格式：
 
 【转换要求】
 1. 输出格式：生成完整HTML文档，包含<!DOCTYPE html>声明、<head>和<body>标签
@@ -165,51 +167,41 @@ def html_convert(text):
 请不要添加任何HTML代码之外的解释，直接输出可保存的完整HTML。
 
 【待转换的论文内容】
-{}"""
+{page_text} """
     
-    responses = []
-    html_history = []
-    # 确保 text 是可迭代的
-    if isinstance(text, str):
-        text = [text]
-    
-    # 创建html文件夹
+    # 获取html文件夹
     project_root = os.path.join(os.path.dirname(__file__), '..', '..')
     current_dir = os.path.abspath(project_root)
     html_dir = os.path.join(current_dir, "temp", "html", "original")
-    os.makedirs(html_dir, exist_ok=True)
 
-    # 分页处理文件
-    for i, page_text in enumerate(text, 1):
-        try:
-            full_prompt = prompt_template.format(page_text)
-            html_history.append({"role": "user", "content": full_prompt})
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=html_history,
-                temperature=0.3,  
-                max_tokens=8192
+    # 处理文件
+    try:
+        html_history.append({"role": "user", "content": prompt})
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=html_history,
+            temperature=0.3,  
+            max_tokens=8192
             )
-            html_history.append(response.choices[0].message)
-            html_content = response.choices[0].message.content.strip()
-            # 清洗输出，获得纯html
-            html_content = clean_html_content(html_content)
-            responses.append(html_content)
-            # 保存HTML文件
-            html_filename = f"page_{i}.html"
-            html_filepath = os.path.join(html_dir, html_filename)
-            with open(html_filepath, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-        except Exception as e:
-            error_msg = f"第{i}页转换失败: {str(e)}"
-            print(error_msg)
+        html_history.append(response.choices[0].message)
+        html_content = response.choices[0].message.content.strip()
+        # 清洗输出，获得纯html
+        html_content = clean_html_content(html_content)
+        # 保存HTML文件
+        html_filename = f"page_{page_num}.html"
+        html_filepath = os.path.join(html_dir, html_filename)
+        with open(html_filepath, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+    except Exception as e:
+                error_msg = f"第{page_num}页转换失败: {str(e)}"
+                print(error_msg)
     
-    return responses
+    return html_content
 
 
-def translate(text_part):
+def translate(page_text, page_num):
     '''
-    将 PDF 文本内容翻译成中文
+    将 PDF 文本内容翻译成中文，并且保存为html文件
     
     Args:
         text_part (str): 要翻译的文本内容(html)
@@ -220,13 +212,18 @@ def translate(text_part):
     Raises:
         Exception: API 调用失败时抛出异常
     '''
-    
+
+     # 获取html文件夹
+    project_root = os.path.join(os.path.dirname(__file__), '..', '..')
+    current_dir = os.path.abspath(project_root)
+    html_dir = os.path.join(current_dir, "temp", "html", "translated")
+
     if client is None:
         raise RuntimeError("API客户端未初始化，请检查API密钥配置")
     
     prompt = f"""请将以下英文论文内容翻译成中文：
 
-{text_part}
+{page_text}
 
 翻译要求：
 1. 保持学术论文的专业性和准确性
@@ -248,7 +245,15 @@ def translate(text_part):
             temperature=0.2,
             max_tokens=8192
         )
-        return clean_html_content(response.choices[0].message.content.strip())
+        html_content = response.choices[0].message.content.strip()
+        # 清洗输出，获得纯html
+        html_content = clean_html_content(html_content)
+        # 保存HTML文件
+        html_filename = f"page_{page_num}.html"
+        html_filepath = os.path.join(html_dir, html_filename)
+        with open(html_filepath, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
     except Exception as e:
         raise e
 

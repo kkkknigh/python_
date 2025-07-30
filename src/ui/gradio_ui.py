@@ -1,15 +1,16 @@
 import gradio as gr
 import re
 from pathlib import Path
-
+    
 def create_reader_ui(
-    get_temp_dir_func,
-    load_documents_func,
-    process_pdf_func,
-    chat_func
+    get_temp_dir,          # 获取/temp路径
+    load_html,   # 获取html内容
+    start_pdf_processing,  # 开始文档处理
+    check_processing_status,  # 返回文档处理状态
+    api_chat
 ):
     """创建UI"""
-    temp_path = get_temp_dir_func()
+    temp_path = get_temp_dir()
 
     # CSS样式
     modern_css = """
@@ -176,12 +177,12 @@ def create_reader_ui(
         # 状态变量
         page_index = gr.State(0)
         html_contents_state = gr.State([])
+        processed_page_num = gr.State(0)
         
         # 加载初始文档内容
-        initial_contents = load_documents_func(temp_path)
+        initial_contents = load_html(temp_path)
         html_contents_state.value = initial_contents
-        
-        
+
         # PDF上传区域
         with gr.Column():
             with gr.Row():
@@ -192,7 +193,7 @@ def create_reader_ui(
                     elem_classes=["modern-input"]
                 )
                 upload_btn = gr.Button(
-                    "智能处理", 
+                    "开始处理", 
                     variant="primary",
                     elem_classes=["btn-modern"],
                     scale=0
@@ -200,17 +201,16 @@ def create_reader_ui(
             
             # PDF处理状态页面
             upload_status = gr.Textbox(
-                label="处理状态",
+                label="正在处理中...",
                 lines=1,
                 interactive=False,
-                value="请上传PDF文件并点击处理",
+                value="请上传PDF并点击处理",
                 elem_classes=["modern-input"]
             )
         
         with gr.Row(elem_classes=["main-container"]):
             # 论文阅读区域 - 左侧主要内容
             with gr.Column(scale=3):
-                
                 html_display = gr.HTML(
                     value=f"""
                     <div class="document-viewer">
@@ -218,7 +218,7 @@ def create_reader_ui(
                         <div style="text-align: center; color: rgba(0,0,0,0.6); padding: 4rem 2rem;">
                             <div style="font-size: 4rem; margin-bottom: 1rem;">📄</div>
                             <h3 style="margin-bottom: 1rem;">准备就绪</h3>
-                            <p>上传PDF文件开始您的智能阅读之旅</p>
+                            <p>上传PDF文件开始阅读</p>
                         </div>
                         '''}
                     </div>
@@ -277,50 +277,91 @@ def create_reader_ui(
                         elem_classes=["btn-modern"]
                     )
         
-        def handle_pdf_upload(file, progress=gr.Progress(track_tqdm=True)):
+        def handle_pdf_upload(file):
             """处理PDF上传"""
             if file is None:
-                return {upload_status: gr.update(value="错误：未选择任何文件")}
-
-            progress(0, desc="开始处理...")
-            
-            # 1. 调用处理函数，该函数现在只返回状态
-            status_message = process_pdf_func(file)
-            
-            progress(0.8, desc=status_message)
-
-            # 2. 如果成功，则加载处理好的HTML文件
-            if "成功" in status_message:
-                new_contents = load_documents_func(temp_path)
-                if not new_contents:
-                    return {
-                        upload_status: gr.update(value="错误：处理完成但未找到HTML文件。"),
-                        html_contents_state: [],
-                        html_display: gr.update(value="<p>未找到内容</p>"),
-                        page_index: 0,
-                        page_info: gr.update(value="第 - 页 / 共 0 页")
-                    }
-                
-                # 3. 更新UI
-                page_idx = 0
-                first_page_html = new_contents[page_idx]
-                page_info_html = f"""
-                <div style="text-align: center; padding: 10px; color: #007acc; font-weight: 600; font-size: 1.1rem;">
-                    第 {page_idx + 1} 页 / 共 {len(new_contents)} 页
-                </div>
-                """
-                progress(1, desc="加载完成！")
                 return {
-                    upload_status: gr.update(value=status_message),
-                    html_contents_state: new_contents,
-                    html_display: f'<div class="document-viewer">{first_page_html}</div>',
-                    page_index: page_idx,
-                    page_info: page_info_html,
+                    upload_status: gr.update(value="错误：未选择任何文件"),
+                    html_contents_state: [],
+                    html_display: gr.update(value="<p>请选择PDF文件</p>"),
+                    page_index: 0,
+                    page_info: gr.update(value="第 - 页 / 共 0 页")
                 }
-            else:
-                # 处理失败
+            
+            # 启动PDF处理
+            try:
+                status_message = start_pdf_processing(file)
+                
                 return {
-                    upload_status: gr.update(value=status_message)
+                        upload_status: gr.update(value="开始处理PDF，请稍候..."),
+                }
+            except Exception as e:
+                return {
+                    upload_status: gr.update(value=f"处理启动失败: {str(e)}"),
+                }
+        
+        def check_processing_progress():
+            """检查处理进度"""
+            try:
+                # 调用检查状态函数
+                status_message, completed, progress, completed_pages = check_processing_status()
+                
+                if completed:
+                    # 处理完成，加载全部结果并停止定时器
+                    new_contents = load_html(temp_path)
+                    if new_contents:
+                        # TODO
+                        page_idx = 0
+                        page_html = new_contents[page_idx] if new_contents else "<p>无内容</p>"
+                        page_info_html = f"""
+                        <div style="text-align: center; padding: 10px; color: #007acc; font-weight: 600; font-size: 1.1rem;">
+                            第 {page_idx + 1} 页 / 共 {len(new_contents)} 页
+                        </div>
+                        """
+                        
+                        return {
+                            upload_status: gr.update(value=status_message),
+                            html_contents_state: new_contents,
+                            html_display: gr.update(value=f'<div class="document-viewer">{page_html}</div>'),
+                            page_index: page_idx,
+                            page_info: gr.update(value=page_info_html),
+                            timer: gr.update(active=False)  # 停止定时器
+                        }
+                    else:
+                        return {
+                            upload_status: gr.update(value="处理完成但未找到内容"),
+                            timer: gr.update(active=False)  # 停止定时器
+                        }
+                else:
+                    # 仍在处理中，实时加载已完成的页面
+                    new_contents = load_html(temp_path)
+                    if new_contents and len(new_contents) > 0:
+                        page_idx = 0
+                        first_page_html = new_contents[page_idx]
+                        page_info_html = f"""
+                        <div style="text-align: center; padding: 10px; color: #ff6b35; font-weight: 600; font-size: 1.1rem;">
+                            处理中: 第 {page_idx + 1} 页 / 共 {len(new_contents)} 页 (进度: {int(progress)}%)
+                        </div>
+                        """
+                        
+                        return {
+                            upload_status: gr.update(value=f"{status_message} (进度: {int(progress)}%)"),
+                            html_contents_state: new_contents,
+                            html_display: gr.update(value=f'<div class="document-viewer">{first_page_html}</div>'),
+                            page_index: page_idx,
+                            page_info: gr.update(value=page_info_html),
+                            timer: gr.update()  # 继续运行定时器
+                        }
+                    else:
+                        # 没有内容时只更新状态
+                        return {
+                            upload_status: gr.update(value=f"{status_message} (进度: {int(progress)}%)"),
+                            timer: gr.update()  # 继续运行定时器
+                        }
+            except Exception as e:
+                return {
+                    upload_status: gr.update(value=f"状态检查失败: {str(e)}"),
+                    timer: gr.update(active=False)  # 出错时停止定时器
                 }
         
         def update_page_view(page_idx, all_htmls):
@@ -369,7 +410,7 @@ def create_reader_ui(
                     current_page_text = re.sub(r'\s+', ' ', current_page_text).strip()
                 
                 # 如果当前页没有文本，可以考虑使用全文作为上下文，这里简化为仅用当前页
-                ai_response = chat_func(message, current_page_text)
+                ai_response = api_chat(message, current_page_text)
                 
                 history.append([message, ai_response])
                 return history, ""
@@ -392,12 +433,28 @@ def create_reader_ui(
             ]
         )
         
+        # 创建定时器 - 每20秒检查一次处理状态
+        timer = gr.Timer(10)
+        timer.tick(
+            check_processing_progress,
+            inputs=[],
+            outputs=[
+                upload_status,
+                html_contents_state,
+                html_display,
+                page_index,
+                page_info,
+                timer
+            ]
+        )
+        
         # 翻页事件 - 增强交互
         prev_btn.click(
             prev_page, 
             inputs=[page_index, html_contents_state], 
             outputs=[html_display, page_index, page_info]
         )
+
         next_btn.click(
             next_page, 
             inputs=[page_index, html_contents_state], 
