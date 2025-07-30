@@ -93,7 +93,7 @@ def html_img_replace(html_file_path, output_dir="temp/html/final"):
             page_images = figures_files  
         else:
             # 都不匹配，选择数目多的图片
-            if len(figures_files) > len(picture_files):
+            if len(figures_files) < len(picture_files):
                 page_images = figures_files
             else:
                 page_images = picture_files
@@ -115,21 +115,31 @@ def html_img_replace(html_file_path, output_dir="temp/html/final"):
         nonlocal img_index
         if img_index < len(page_images):
             img_path = page_images[img_index]
-            # 直接使用相对于项目根目录的路径，避免..路径
-            relative_path = img_path.replace("\\", "/")
-            # 如果路径以../开头，移除../前缀
-            if relative_path.startswith("../"):
-                relative_path = relative_path[3:]
-            # 在路径前添加/前缀
-            if not relative_path.startswith("/"):
-                relative_path = "/" + relative_path
             
-            original_tag = match.group(0)
-            # 使用正则表达式替换src属性
-            new_img_tag = re.sub(r'src="[^"]*"', f'src="{relative_path}"', original_tag, flags=re.IGNORECASE)
-            
-            img_index += 1
-            return new_img_tag
+            try:
+                # 读取图片文件并转换为base64
+                import base64
+                with open(img_path, 'rb') as img_file:
+                    img_data = img_file.read()
+                    img_base64 = base64.b64encode(img_data).decode('utf-8')
+                    
+              
+                mime_type = 'image/png'  # 默认为png
+                
+                # 生成data URI
+                data_uri = f"data:{mime_type};base64,{img_base64}"
+                
+                original_tag = match.group(0)
+                # 使用正则表达式替换src属性
+                new_img_tag = re.sub(r'src="[^"]*"', f'src="{data_uri}"', original_tag, flags=re.IGNORECASE)
+                
+                img_index += 1
+                return new_img_tag
+                
+            except Exception as e:
+                print(f"读取图片失败 {img_path}: {e}")
+                # 如果读取失败，保持原始标签
+                return match.group(0)
         else:
             return match.group(0)
     

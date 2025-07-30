@@ -26,47 +26,93 @@ def pic_extract(pdf_path=PDF_PATH):
     Returns:
         list: 保存的图片文件路径列表
     
-    特点：支持CMYK转RGB，智能过滤装饰图，按页码命名
+    特点：支持CMYK转RGB，智能过滤装饰图，按页码命名，避免重复提取
     """
     doc = fitz.open(pdf_path)
     saved_files = []
     picture_dir = os.path.join(os.path.dirname(pdf_path), "picture")
     os.makedirs(picture_dir, exist_ok=True)
+    
+    # 记录已处理的图片，避免重复
+    processed_images = set()
 
     try:
-        img_count = 0
         for page_num, page in enumerate(doc):
+            page_img_count = 0  # 每页单独计数
+            
             for img in page.get_images(full=True):
+                # 使用图片的MD5哈希作为唯一标识符
+                img_index = img[0]  # 图片在文档中的索引
+                
+                # 避免重复处理同一张图片
+                if img_index in processed_images:
+                    continue
+                
                 # 获取图片位置信息
-                img_rects = page.get_image_rects(img[0])
+                img_rects = page.get_image_rects(img_index)
                 if not img_rects:
                     continue
                 
-                img_rect = img_rects[0]  # 取第一个位置
+                # 合并同一图片的多个位置区域，取最大边界
+                combined_rect = img_rects[0]
+                for rect in img_rects[1:]:
+                    combined_rect = fitz.Rect(
+                        min(combined_rect.x0, rect.x0),
+                        min(combined_rect.y0, rect.y0), 
+                        max(combined_rect.x1, rect.x1),
+                        max(combined_rect.y1, rect.y1)
+                    )
                 
                 # 使用筛选函数判断是否为学术相关图片
-                if not _is_academic_relevant_image(page, img_rect):
+                if not _is_academic_relevant_image(page, combined_rect):
                     continue  # 跳过无关图片
                 
-                base_image = doc.extract_image(img[0])
-                image = Image.open(BytesIO(base_image["image"]))
+                try:
+                    base_image = doc.extract_image(img_index)
+                    image = Image.open(BytesIO(base_image["image"]))
+                    
+                    # 检查图片尺寸，过滤过小的图片
+                    if image.width < 50 or image.height < 50:
+                        continue
+                    
+                    # 简单的图片内容检查：检查是否为单色或几乎单色的图片
+                    # 这类图片可能是背景、分隔线等装饰元素
+                    if image.mode in ['RGB', 'RGBA']:
+                        # 转换为灰度来简化分析
+                        gray_image = image.convert('L')
+                        # 计算像素值的标准差，标准差很小说明颜色变化很小
+                        import numpy as np
+                        pixels = np.array(gray_image)
+                        pixel_std = np.std(pixels)
+                        
+                        # 如果标准差很小，可能是单色背景
+                        if pixel_std < 10:  # 标准差阈值
+                            continue
 
-                # CMYK转RGB
-                if image.mode == 'CMYK':
-                    image = image.convert('RGB')
-                elif image.mode not in ['RGB', 'L']:
-                    image = image.convert('RGB')
-    
-                filepath = os.path.join(picture_dir, f"page_{page_num + 1}_img_{img_count + 1}.png")
-                image.save(filepath, "png")
-                saved_files.append(filepath)
-                img_count += 1
+                    # CMYK转RGB
+                    if image.mode == 'CMYK':
+                        image = image.convert('RGB')
+                    elif image.mode not in ['RGB', 'L']:
+                        image = image.convert('RGB')
+        
+                    filepath = os.path.join(picture_dir, f"page_{page_num + 1}_img_{page_img_count + 1}.png")
+                    image.save(filepath, "png")
+                    saved_files.append(filepath)
+                    
+                    # 标记为已处理并更新计数
+                    processed_images.add(img_index)
+                    page_img_count += 1
+                    
+                except Exception as e:
+                    print(f"处理图片时出错 (页面 {page_num + 1}): {e}")
+                    continue
+                    
     finally:
         doc.close()
 
     return saved_files
 
-def _is_academic_relevant_image(page, img_rect, min_size=50):
+def _is_academic_relevant_image(page, img_rect, min_size=40):
     """
     判断图片是否为学术相关内容
     
@@ -92,11 +138,32 @@ def _is_academic_relevant_image(page, img_rect, min_size=50):
     if aspect_ratio > 10 or aspect_ratio < 0.1:  # 过于细长或过于扁平
         return False
     
-    # 4. 检查周围文本内容：寻找学术相关的关键词
+    # 4. 检查是否为纯文本区域（避免提取标题等文本内容）
+    blocks = page.get_text("dict")["blocks"]
+    
+    # 计算图片区域内的文字密度
+    text_in_image_area = 0
+    for block in blocks:
+        if "lines" in block:
+            block_rect = fitz.Rect(block["bbox"])
+            if _rects_overlap(block_rect, img_rect):
+                overlap_rect = _get_overlap_rect(block_rect, img_rect)
+                if overlap_rect:
+                    text_in_image_area += overlap_rect.width * overlap_rect.height
+    
+    # 如果图片区域内文字密度过高，可能是纯文本，跳过
+    image_area = img_rect.width * img_rect.height
+    if image_area > 0 and text_in_image_area / image_area > 0.8:
+        return False
+    
+    # 5. 检查周围文本内容：寻找学术相关的关键词
     academic_keywords = [
         'fig', 'figure', 'table', 'chart', 'graph', 'diagram', 'scheme',
         'image', 'photo', 'illustration', 'plot', 'data', 'result', 'analysis',
-        'equation', 'formula', 'model', 'experiment', 'method', 'procedure'
+        'equation', 'formula', 'model', 'experiment', 'method', 'procedure',
+        'section', 'chapter', 'paper', 'study', 'research', 'conclusion',
+        'abstract', 'introduction', 'discussion', 'algorithm', 'function',
+        'structure', 'system', 'process', 'comparison', 'evaluation'
     ]
     
     # 扩展搜索区域查找相关文本
@@ -108,7 +175,6 @@ def _is_academic_relevant_image(page, img_rect, min_size=50):
     )
     
     # 获取搜索区域内的文本
-    blocks = page.get_text("dict")["blocks"]
     nearby_text = ""
     for block in blocks:
         if "lines" in block:
@@ -122,7 +188,7 @@ def _is_academic_relevant_image(page, img_rect, min_size=50):
     nearby_text_lower = nearby_text.lower()
     has_academic_keywords = any(keyword in nearby_text_lower for keyword in academic_keywords)
     
-    # 5. 综合判断
+    # 6. 综合判断
     # 大尺寸图片更可能是学术内容
     is_large = img_rect.width > page_width * 0.4 or img_rect.height > page_height * 0.2
     
@@ -145,12 +211,15 @@ def fig_screenshot(pdf_path=PDF_PATH):
     Returns:
         list: figure信息字典列表，包含页码、编号、标题、截图路径等
     
-    特点：支持多种标题格式，智能定位，8倍高精度截图
+    特点：支持多种标题格式，智能定位，8倍高精度截图，避免重复处理
     """
     doc = fitz.open(pdf_path)
     figures = []
     figures_dir = os.path.join(os.path.dirname(pdf_path), "figures")
     os.makedirs(figures_dir, exist_ok=True)
+    
+    # 记录已处理的figure，避免重复
+    processed_figures = set()
     
     try:
         for page_num, page in enumerate(doc):
@@ -161,19 +230,44 @@ def fig_screenshot(pdf_path=PDF_PATH):
             for match in figure_matches:
                 fig_num = match.group(1)
                 fig_caption = match.group(2).strip()
+                
+                # 创建唯一标识符（页码+图表编号）
+                figure_id = f"{page_num + 1}_{fig_num}"
+                
+                # 避免重复处理同一个figure
+                if figure_id in processed_figures:
+                    continue
+                
                 caption_rect = _find_caption_position(page, fig_num)
                 
                 if caption_rect and _has_image_above(page, caption_rect):
-                    figure_rect = _estimate_figure_area(page, caption_rect)
-                    screenshot_path = _screenshot_figure(page, figure_rect, page_num + 1, fig_num, figures_dir)
+                    try:
+                        figure_rect = _estimate_figure_area(page, caption_rect)
+                        
+                        # 验证figure区域的有效性
+                        if figure_rect.width < 50 or figure_rect.height < 50:
+                            print(f"跳过过小的figure区域: Fig. {fig_num} (页面 {page_num + 1})")
+                            continue
+                            
+                        screenshot_path = _screenshot_figure(page, figure_rect, page_num + 1, fig_num, figures_dir)
+                        
+                        figures.append({
+                            'page': page_num + 1,
+                            'figure_number': fig_num,
+                            'caption': f"Fig. {fig_num}: {fig_caption}",
+                            'screenshot_path': screenshot_path,
+                            'figure_rect': figure_rect
+                        })
+                        
+                        # 标记为已处理
+                        processed_figures.add(figure_id)
+                        
+                    except Exception as e:
+                        print(f"处理Figure {fig_num}时出错 (页面 {page_num + 1}): {e}")
+                        continue
+                else:
+                    print(f"未找到Figure {fig_num}的有效图片区域 (页面 {page_num + 1})")
                     
-                    figures.append({
-                        'page': page_num + 1,
-                        'figure_number': fig_num,
-                        'caption': f"Fig. {fig_num}: {fig_caption}",
-                        'screenshot_path': screenshot_path,
-                        'figure_rect': figure_rect
-                    })
     finally:
         doc.close()
     
@@ -204,7 +298,7 @@ def _find_caption_position(page, fig_num):
     
     return None
 
-def _has_image_above(page, caption_rect, tolerance=10):
+def _has_image_above(page, caption_rect, tolerance=15):
     """检查标题上方是否有图片，通过图片对象和文字密度验证"""
     blocks = page.get_text("dict")["blocks"]
     text_blocks = [fitz.Rect(block["bbox"]) for block in blocks if "lines" in block]
@@ -214,17 +308,25 @@ def _has_image_above(page, caption_rect, tolerance=10):
     direct_above_bottom = max([50] + [rect.y1 for rect in text_blocks 
                                      if rect.y1 <= caption_rect.y0 + tolerance])
     
-    # 定义搜索区域
+    # 定义搜索区域（增大搜素范围）
     search_rect = fitz.Rect(
-        caption_rect.x0 - 20, direct_above_bottom - tolerance,
-        caption_rect.x1 + 20, caption_rect.y0 + tolerance
+        caption_rect.x0 - 30, direct_above_bottom - tolerance,
+        caption_rect.x1 + 30, caption_rect.y0 + tolerance
     )
     
-    # 检查是否有实际图片
+    # 检查是否有实际图片对象
+    has_actual_image = False
     for img in page.get_images(full=True):
         for img_rect in page.get_image_rects(img[0]):
             if _rects_overlap(img_rect, search_rect):
-                return True
+                has_actual_image = True
+                break
+        if has_actual_image:
+            break
+    
+    # 如果有实际图片对象，直接返回True
+    if has_actual_image:
+        return True
     
     # 计算文字密度
     text_area = sum((_get_overlap_rect(fitz.Rect(block["bbox"]), search_rect) or 
@@ -235,7 +337,45 @@ def _has_image_above(page, caption_rect, tolerance=10):
                    _rects_overlap(fitz.Rect(block["bbox"]), search_rect))
     
     total_area = search_rect.width * search_rect.height
-    return total_area > 0 and text_area / total_area < 0.3
+    
+    # 如果没有实际图片，进行更严格的文字密度检查
+    if total_area > 0:
+        text_density = text_area / total_area
+        
+        # 检查搜索区域内的文本内容，排除纯标题文本
+        search_text = ""
+        for block in blocks:
+            if "lines" in block:
+                block_rect = fitz.Rect(block["bbox"])
+                if _rects_overlap(block_rect, search_rect):
+                    for line in block["lines"]:
+                        line_text = " ".join(span["text"] for span in line["spans"])
+                        search_text += line_text + " "
+        
+        # 检查是否包含标题性质的文本（如"A Additional", "B Results"等）
+        title_patterns = [
+            r'^[A-Z]\s+[A-Z][a-z]+',  # 如 "A Additional", "B Results"
+            r'^\d+\.\s*[A-Z][a-z]+',  # 如 "1. Introduction"
+            r'^Chapter\s+\d+',        # 如 "Chapter 1"
+            r'^Section\s+\d+',        # 如 "Section 1"
+            r'^Appendix\s+[A-Z]',     # 如 "Appendix A"
+        ]
+        
+        is_likely_title = any(re.search(pattern, search_text.strip()) for pattern in title_patterns)
+        
+        # 如果是标题文本，不认为有图片
+        if is_likely_title and text_density > 0.3:
+            return False
+        
+        # 如果文字密度较低，可能有图片存在
+        if text_density < 0.4:  # 进一步严格化标准（0.5->0.4）
+            return True
+    
+    # 如果搜索区域很大但没有文字，也可能有图片
+    if total_area > 10000 and text_area < 1000:  # 大区域但文字很少
+        return True
+    
+    return False
 
 def _rects_overlap(rect1, rect2):
     """检查两个矩形是否重叠"""
@@ -253,9 +393,14 @@ def _estimate_figure_area(page, caption_rect):
     """估算figure显示区域，基于相关图片和文本块分析"""
     page_rect = page.rect
     
-    # 找到相关图片
-    search_area = fitz.Rect(caption_rect.x0 - 100, max(0, caption_rect.y0 - 400),
-                           caption_rect.x1 + 100, caption_rect.y0)
+    # 扩大搜索区域，确保能找到所有相关图片
+    # 左右各扩展150像素（原来100），向上扩展500像素（原来400）
+    search_area = fitz.Rect(
+        max(0, caption_rect.x0 - 150), 
+        max(0, caption_rect.y0 - 500),
+        min(page_rect.width, caption_rect.x1 + 150), 
+        caption_rect.y0
+    )
     
     related_rects = []
     for img in page.get_images(full=True):
@@ -283,9 +428,32 @@ def _estimate_figure_area(page, caption_rect):
     
     # 确定边界
     if related_rects:
-        top_boundary = max(20, min(r.y0 for r in related_rects) - 5)
-        left_boundary = max(page_rect.width * 0.05, min(r.x0 for r in related_rects) - 10)
-        right_boundary = min(page_rect.width * 0.95, max(r.x1 for r in related_rects) + 10)
+        # 获取所有相关图片的边界
+        all_x0 = [r.x0 for r in related_rects]
+        all_x1 = [r.x1 for r in related_rects]
+        all_y0 = [r.y0 for r in related_rects]
+        
+        # 计算图片的实际边界，给予适当的边距
+        img_left = min(all_x0)
+        img_right = max(all_x1)
+        img_top = min(all_y0)
+        
+        # 设置更合理的边界，确保不切割图片
+        # 左边界：取图片左边界和页面5%边距中的较小值，但不能小于0
+        left_boundary = max(0, min(img_left - 20, page_rect.width * 0.05))
+        
+        # 右边界：取图片右边界和页面95%边距中的较大值，但不能超过页面宽度
+        right_boundary = min(page_rect.width, max(img_right + 20, page_rect.width * 0.95))
+        
+        # 顶边界：图片顶部留少量空间
+        top_boundary = max(20, img_top - 15)
+        
+        # 确保边界合理性检查
+        if right_boundary - left_boundary < 100:  # 如果宽度太小，使用默认宽度
+            center_x = (left_boundary + right_boundary) / 2
+            left_boundary = max(0, center_x - page_rect.width * 0.4)
+            right_boundary = min(page_rect.width, center_x + page_rect.width * 0.4)
+            
     else:
         # 搜索最近的正文文字块
         top_boundary = 50
@@ -294,8 +462,9 @@ def _estimate_figure_area(page, caption_rect):
                 block['rect'].y1 < caption_rect.y0 - 20):
                 top_boundary = max(top_boundary, block['rect'].y1 + 10)
         
-        left_boundary = page_rect.width * 0.05
-        right_boundary = page_rect.width * 0.95
+        # 没有相关图片时，使用更宽的默认边界
+        left_boundary = page_rect.width * 0.02  # 从5%减少到2%
+        right_boundary = page_rect.width * 0.98  # 从95%增加到98%
     
     return fitz.Rect(left_boundary, top_boundary, right_boundary, caption_rect.y0 - 10)
 
@@ -303,18 +472,40 @@ def _screenshot_figure(page, figure_rect, page_num, fig_num, output_dir):
     """高精度截图保存figure区域（8倍缩放）"""
     # 验证区域有效性
     page_rect = page.rect
-    if figure_rect.width <= 0 or figure_rect.height <= 0:
+    
+    # 确保figure_rect在页面范围内
+    figure_rect = figure_rect & page_rect
+    
+    # 如果裁剪后区域无效，使用默认区域
+    if figure_rect.width <= 10 or figure_rect.height <= 10:
+        print(f"警告: Figure区域过小或无效，使用默认区域 (页面 {page_num}, Fig. {fig_num})")
         figure_rect = fitz.Rect(page_rect.width * 0.1, page_rect.height * 0.1,
                                page_rect.width * 0.9, page_rect.height * 0.9)
     
-    # 8x缩放高精度截图
-    figure_rect &= page_rect
-    matrix = fitz.Matrix(8.0, 8.0)
-    pixmap = page.get_pixmap(matrix=matrix, clip=figure_rect, alpha=False)
+    # 再次确保在页面边界内
+    figure_rect = figure_rect & page_rect
     
-    # 保存
-    filepath = os.path.join(output_dir, f"page_{page_num}_fig_{fig_num}.png")
-    pixmap.save(filepath)
-    pixmap = None  # 释放内存
-    
-    return filepath
+    try:
+        # 8x缩放高精度截图
+        matrix = fitz.Matrix(8.0, 8.0)
+        pixmap = page.get_pixmap(matrix=matrix, clip=figure_rect, alpha=False)
+        
+        # 保存
+        filepath = os.path.join(output_dir, f"page_{page_num}_fig_{fig_num}.png")
+        pixmap.save(filepath)
+        pixmap = None  # 释放内存
+        
+        return filepath
+    except Exception as e:
+        print(f"截图保存失败 (页面 {page_num}, Fig. {fig_num}): {e}")
+        # 尝试使用更保守的区域重新截图
+        safe_rect = fitz.Rect(page_rect.width * 0.1, page_rect.height * 0.1,
+                             page_rect.width * 0.9, page_rect.height * 0.9)
+        matrix = fitz.Matrix(4.0, 4.0)  # 降低缩放倍数
+        pixmap = page.get_pixmap(matrix=matrix, clip=safe_rect, alpha=False)
+        
+        filepath = os.path.join(output_dir, f"page_{page_num}_fig_{fig_num}_safe.png")
+        pixmap.save(filepath)
+        pixmap = None
+        
+        return filepath
