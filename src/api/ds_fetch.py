@@ -233,9 +233,10 @@ def translate(page_text, page_num):
 3. 输出为完整的HTML格式文档
 4. 开头为<!DOCTYPE html>声明或完整的<html></html>标签
 5. 在HTML body中采用原文-翻译-原文-翻译对照格式，分段落翻译
-6. 除译文外保持原文的CSS样式不变
-7. 除添加翻译段落外不要改变原html
-8. 不要添加任何HTML代码之外的解释文字
+6. 原文段落和翻译段落分别用<div class="original">和<div class="translation">标记
+7. 除译文外保持原文的CSS样式不变
+8. 除添加翻译段落外不要改变原html
+9. 不要添加任何HTML代码之外的解释文字
 
 请确保输出的内容可以直接保存为.html文件。"""
 
