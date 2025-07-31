@@ -5,7 +5,6 @@ import threading
 import argparse
 import sys
 import re
-import uuid
 from pathlib import Path
 
 import gradio as gr
@@ -27,7 +26,7 @@ def setup_environment():
     """设置环境和创建必要目录"""
     
     clinet_initialize()
-    
+
     temp_dir = project_root / "temp"
     
     # 清除已存在的目录

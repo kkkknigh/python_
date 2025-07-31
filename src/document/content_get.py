@@ -8,13 +8,13 @@ PDF文本提取模块
 """
 import fitz  
 import os
-import easyocr
+#import easyocr
 
 ARTICLE_TEXT = None
 PDF_PATH = "src/document/article.pdf"
 
-reader = easyocr.Reader(['en'])
-
+#reader = easyocr.Reader(['en'])
+'''
 def text_ocr(pdf_path=PDF_PATH):
     """
     使用OCR提取PDF文本（适用于扫描版PDF）
@@ -49,6 +49,7 @@ def text_ocr(pdf_path=PDF_PATH):
         f.write(" ".join(ARTICLE_TEXT))
 
     return ARTICLE_TEXT
+'''
 
 def text_extract(pdf_path=PDF_PATH):
     """

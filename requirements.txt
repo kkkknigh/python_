@@ -1,16 +1,21 @@
+# AI API客户端
 openai>=1.3.0
-google-genai>=0.5.0
+
+# Web界面框架
 gradio>=4.0.0
+
+# PDF处理
 PyMuPDF>=1.23.0
+
+# 图像处理
 Pillow>=10.0.0
-pytesseract>=0.3.10
-easyocr
-beautifulsoup4 
-lxml
+
+'''
+# 实际应用中一般不使用ocr识别
+
+# OCR文字识别
+easyocr>=1.7.0
+
+# 数值计算（easyocr的依赖）
 numpy>=1.21.0
-pathlib
-argparse
-threading
-shutil
-uuid
-re
+'''
