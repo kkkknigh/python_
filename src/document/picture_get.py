@@ -265,8 +265,6 @@ def fig_screenshot(pdf_path=PDF_PATH):
                     except Exception as e:
                         print(f"处理Figure {fig_num}时出错 (页面 {page_num + 1}): {e}")
                         continue
-                else:
-                    print(f"未找到Figure {fig_num}的有效图片区域 (页面 {page_num + 1})")
                     
     finally:
         doc.close()

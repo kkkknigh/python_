@@ -3,8 +3,9 @@ import os, re
 import sys
 import argparse
 
-DEEPSEEK_API_KEY = 'sk-1b7afa90a6764df78928048a0da5f824'
+DEEPSEEK_API_KEY = ''
 
+client = None
 
 def get_api_key():
     """
@@ -29,13 +30,16 @@ def get_api_key():
                    "2. 环境变量: export DEEPSEEK_API_KEY=YOUR_KEY\n"
                    "3. 命令行参数: --api-key YOUR_KEY\n"
                    "4. 交互式输入")
-# 初始化客户端
-try:
-    DEEPSEEK_API_KEY = get_api_key()
-    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
-except ValueError as e:
-    print(f"API密钥配置错误: {e}")
-    client = None
+
+def clinet_initialize():
+    # 初始化客户端
+    global client
+    try:
+        DEEPSEEK_API_KEY = get_api_key()
+        client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+    except ValueError as e:
+        print(f"API密钥配置错误: {e}")
+        client = None
 
 # 存储聊天上下文
 CHAT_MESSAGE = []
@@ -159,7 +163,7 @@ def html_convert(page_text, page_num):
    - 字体大小16-18px，提高可读性
 5. 特殊元素处理：
    - 公式：识别公式，使用<span class="math">$LaTeX公式$</span>标记，并用latex语法还原编辑公式
-   - 图片引用：识别"Figure X/Fig.X"的较大篇幅的描述图片的文本，在其上方添加<div class="figure"><img src="图片路径占位" alt="图描述"><figcaption>图片说明</figcaption></div>
+   - 图片引用：识别"Figure X/Fig.X"的较大篇幅独立成段的描述图片的文本，在其上方添加<div class="figure"><img src="图片路径占位" alt="图描述"><figcaption>图片说明</figcaption></div>
    - 引用：使用<blockquote>或<cite>标签标记引用内容
    - 参考文献：使用<ol class="references">和<li>标签列出
 6. 内嵌基本且美观的css样式，可以适当创意发挥以提高可读性

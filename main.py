@@ -16,7 +16,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from src.ui.gradio_ui import create_reader_ui
-from src.api.ds_fetch import chat as api_chat, html_convert, translate
+from src.api.ds_fetch import chat as api_chat, html_convert, translate, clinet_initialize
 from src.document.content_get import text_extract
 from src.document.picture_get import pic_extract, fig_screenshot
 from src.document.content_integrate import html_img_replace
@@ -25,6 +25,8 @@ processing_status = {"status": "idle", "message": "请上传PDF并点击处理",
 
 def setup_environment():
     """设置环境和创建必要目录"""
+    
+    clinet_initialize()
     
     temp_dir = project_root / "temp"
     
