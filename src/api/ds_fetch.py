@@ -1,7 +1,7 @@
 from openai import OpenAI
 import os, re
 
-DEEPSEEK_API_KEY = ''
+DEEPSEEK_API_KEY = 'sk-f61e298f11be44548cad7c554c9f22ef'
 
 client = None
 
@@ -29,7 +29,7 @@ def get_api_key():
                    "3. 命令行参数: --api-key YOUR_KEY\n"
                    "4. 交互式输入")
 
-def clinet_initialize():
+def client_initialize():
     # 初始化客户端
     global client
     try:
@@ -182,7 +182,7 @@ def html_convert(page_text, page_num):
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=html_history,
-            temperature=0.3,  
+            temperature=0.2,  
             max_tokens=8192
             )
         html_history.append(response.choices[0].message)
@@ -233,10 +233,9 @@ def translate(page_text, page_num):
 3. 输出为完整的HTML格式文档
 4. 开头为<!DOCTYPE html>声明或完整的<html></html>标签
 5. 在HTML body中采用原文-翻译-原文-翻译对照格式，分段落翻译
-6. 格式：<p class='original'>原文段落</p><p class='translation'>翻译段落</p>
-7. 除译文外保持原文的CSS样式不变
-8. 除添加翻译段落外不要改变原html
-9. 不要添加任何HTML代码之外的解释文字
+6. 除译文外保持原文的CSS样式不变
+7. 除添加翻译段落外不要改变原html
+8. 不要添加任何HTML代码之外的解释文字
 
 请确保输出的内容可以直接保存为.html文件。"""
 
@@ -244,7 +243,7 @@ def translate(page_text, page_num):
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
+            temperature=0.1,
             max_tokens=8192
         )
         html_content = response.choices[0].message.content.strip()
@@ -298,7 +297,18 @@ def recommend(text):
             temperature=0.5,
             max_tokens=8192
         )
-        return response.choices[0].message.content.strip()
+        recommend_res = response.choices[0].message.content.strip()
+        # 保存推荐结果
+        project_root = os.path.join(os.path.dirname(__file__), '..', '..')
+        current_dir = os.path.abspath(project_root)
+        temp_dir = os.path.join(current_dir, "temp")
+        recommend_file = os.path.join(temp_dir, "recommend.txt")
+        try:
+            with open(recommend_file, 'w', encoding='utf-8') as f:
+                f.write(recommend_res)
+        except Exception as e:
+            print(f"保存推荐结果失败: {e}")
+        return recommend_res
     except Exception as e:
         raise e
 
@@ -327,18 +337,13 @@ def analyze(text):
 分析要求：
 1. 研究背景与动机
 2. 主要贡献和创新点
-3. 关键技术和方法
+3. 关键技术和方法（重点）
 4. 实验设计与结果
-5. 优势与局限性
-6. 未来研究方向
-7. 学术价值和应用前景
 
 输出格式：
-- 使用标题分段组织内容
-- 每个要点用简洁的语言概括
 - 分条列出主要内容
 
-请提供结构化的专业分析。"""
+请提供专业分析。"""
 
     try:
         response = client.chat.completions.create(
@@ -347,7 +352,21 @@ def analyze(text):
             temperature=0.4,
             max_tokens=8192
         )
-        return response.choices[0].message.content.strip()
+        
+        analyze_res = response.choices[0].message.content.strip()
+        
+        # 保存分析结果
+        project_root = os.path.join(os.path.dirname(__file__), '..', '..')
+        current_dir = os.path.abspath(project_root)
+        temp_dir = os.path.join(current_dir, "temp")
+        analyze_file = os.path.join(temp_dir, "analyze.txt")
+        try:
+            with open(analyze_file, 'w', encoding='utf-8') as f:
+                f.write(analyze_res)
+        except Exception as e:
+            print(f"保存分析结果失败: {e}")
+    
+        return analyze_res
     except Exception as e:
         raise e
 

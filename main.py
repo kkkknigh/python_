@@ -15,7 +15,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from src.ui.gradio_ui import create_reader_ui
-from src.api.ds_fetch import chat as api_chat, html_convert, translate, clinet_initialize
+from src.api.ds_fetch import chat as api_chat, html_convert, translate, client_initialize, recommend, analyze
 from src.document.content_get import text_extract
 from src.document.picture_get import pic_extract, fig_screenshot
 from src.document.content_integrate import html_img_replace
@@ -25,7 +25,7 @@ processing_status = {"status": "idle", "message": "请上传PDF并点击处理",
 def setup_environment():
     """设置环境和创建必要目录"""
     
-    clinet_initialize()
+    client_initialize()
 
     temp_dir = project_root / "temp"
     
@@ -99,7 +99,7 @@ def process_pdf_background(pdf_path):
             "status": "processing", 
             "message": "图片提取中", 
             "completed_pages": completed_pages, 
-            "progress": 5
+            "progress": 2.5
         })
         pic_paths = pic_extract(pdf_path)
         fig_paths = fig_screenshot(pdf_path)
@@ -108,7 +108,7 @@ def process_pdf_background(pdf_path):
                 "status": "error", 
                 "message": "图片提取失败", 
                 "completed_pages": completed_pages, 
-                "progress": 5
+                "progress": 2.5
             })
             return
           
@@ -117,7 +117,7 @@ def process_pdf_background(pdf_path):
             "status": "processing", 
             "message": "文本提取中", 
             "completed_pages": completed_pages, 
-            "progress": 10
+            "progress": 5
         })
         text_pages = text_extract(str(pdf_path))
         if not text_pages:
@@ -125,13 +125,50 @@ def process_pdf_background(pdf_path):
                 "status": "error", 
                 "message": "文本提取失败", 
                 "completed_pages": completed_pages,  
-                "progress": 10
+                "progress": 5
             })
             return
         
         total_pages = len(text_pages)
         
-        # 3. 依次处理所有页面
+        total_text = "".join(text_pages)
+
+        # 3.文章分析生成
+        processing_status.update({
+            "status": "processing", 
+            "message": "论文分析中", 
+            "completed_pages": completed_pages, 
+            "progress": 7.5
+        })
+        analyze_res = analyze(total_text)
+        if not analyze_res:
+            processing_status.update({
+                "status": "error", 
+                "message": "论文分析失败", 
+                "completed_pages": completed_pages,  
+                "progress": 7.5
+            })
+            return
+
+        # 4.文章推荐生成
+        processing_status.update({
+            "status": "processing", 
+            "message": "论文推荐中", 
+            "completed_pages": completed_pages, 
+            "progress": 10
+        })
+        recommend_res = recommend(total_text)
+        if not recommend_res:
+            processing_status.update({
+                "status": "error", 
+                "message": "论文推荐失败", 
+                "completed_pages": completed_pages,  
+                "progress": 10
+            })
+            return
+        
+    
+        # 5. 依次处理所有页面
         temp_dir = get_temp_dir()
         
         for i, text_page in enumerate(text_pages):

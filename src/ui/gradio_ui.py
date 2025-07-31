@@ -12,6 +12,28 @@ def create_reader_ui(
     """创建AI Reader的Gradio界面"""
     temp_path = get_temp_dir()
 
+    def load_analyze_result(temp_dir):
+        """加载论文分析结果"""
+        analyze_file = temp_dir / "analyze.txt"
+        if analyze_file.exists():
+            try:
+                with open(analyze_file, 'r', encoding='utf-8') as f:
+                    return f.read().strip()
+            except Exception:
+                return "分析结果读取失败"
+        return "等待论文处理完成后显示分析结果..."
+
+    def load_recommend_result(temp_dir):
+        """加载论文推荐结果"""
+        recommend_file = temp_dir / "recommend.txt"
+        if recommend_file.exists():
+            try:
+                with open(recommend_file, 'r', encoding='utf-8') as f:
+                    return f.read().strip()
+            except Exception:
+                return "推荐结果读取失败"
+        return "等待论文处理完成后显示推荐内容..."
+
     modern_css = """
     <style>
     /* 全局盒模型设置 - 作用对象: 所有HTML元素 */
@@ -230,6 +252,38 @@ def create_reader_ui(
     .document-viewer {
         transition: none !important;
     }
+
+    /* 论文分析和推荐框样式 - 作用对象: 分析和推荐文本框 */
+    .analyze-recommend-container {
+        margin-bottom: 1rem !important;
+    }
+
+    /* 分析推荐文本框内部样式 - 作用对象: 文本框内容 */
+    .analyze-recommend-container textarea {
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        background: #f8f9fa !important;
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+    }
+
+    .markdown-display {
+        border: 1px solid #e0e0e0 !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+        background: #f8f9fa !important;
+        max-height: 40vh !important; /* 设置最大高度 */
+        overflow-y: auto !important; /* 超出高度则显示滚动条 */
+        min-height: 30vh !important;
+    }
+
+    /* 分析推荐文本框标签样式 - 作用对象: 文本框标题 */
+    .analyze-recommend-container label {
+        font-weight: 600 !important;
+        color: #333 !important;
+        margin-bottom: 8px !important;
+    }
     </style>
     """
     
@@ -298,6 +352,12 @@ def create_reader_ui(
         html_contents_state = gr.State([])
         processed_page_num = gr.State(0)
         
+        # 初始化分析和推荐状态
+        initial_analyze = load_analyze_result(temp_path)
+        initial_recommend = load_recommend_result(temp_path)
+        analyze_result_state = gr.State(initial_analyze)
+        recommend_result_state = gr.State(initial_recommend)
+        
         initial_contents = load_html(temp_path)
         html_contents_state.value = initial_contents
 
@@ -323,6 +383,20 @@ def create_reader_ui(
                 value="请上传PDF并点击处理",
                 elem_classes=["modern-input"]
             )
+        # 添加论文分析和推荐区域
+        with gr.Row(elem_classes=["analyze-recommend-container"]):
+            with gr.Column(scale=1):
+                analyze_display = gr.Markdown(
+                    label="论文分析",
+                    value=initial_analyze,
+                    elem_classes=["markdown-display"]
+                )
+            with gr.Column(scale=1):
+                recommend_display = gr.Markdown(
+                    label="相关推荐",
+                    value=initial_recommend,
+                    elem_classes=["markdown-display"]
+                )
         
         with gr.Row(elem_classes=["main-container"]):
             with gr.Column(scale=2):
@@ -397,7 +471,11 @@ def create_reader_ui(
                     html_contents_state: gr.update(),
                     html_display: gr.update(),
                     page_index: gr.update(),
-                    page_info: gr.update()
+                    page_info: gr.update(),
+                    analyze_display: gr.update(),
+                    recommend_display: gr.update(),
+                    analyze_result_state: gr.update(),
+                    recommend_result_state: gr.update()
                 }
             
             try:
@@ -408,7 +486,11 @@ def create_reader_ui(
                     html_contents_state: gr.update(),
                     html_display: gr.update(),
                     page_index: gr.update(),
-                    page_info: gr.update()
+                    page_info: gr.update(),
+                    analyze_display: gr.update(value="正在分析论文内容..."),
+                    recommend_display: gr.update(value="正在生成相关推荐..."),
+                    analyze_result_state: gr.update(),
+                    recommend_result_state: gr.update()
                 }
             except Exception as e:
                 return {
@@ -416,7 +498,11 @@ def create_reader_ui(
                     html_contents_state: gr.update(),
                     html_display: gr.update(),
                     page_index: gr.update(),
-                    page_info: gr.update()
+                    page_info: gr.update(),
+                    analyze_display: gr.update(),
+                    recommend_display: gr.update(),
+                    analyze_result_state: gr.update(),
+                    recommend_result_state: gr.update()
                 }
         
         def update_page_view(page_idx, all_htmls):
@@ -451,6 +537,10 @@ def create_reader_ui(
             try:
                 status_message, completed, progress, completed_pages = check_processing_status()
                 
+                # 获取最新的分析和推荐结果
+                current_analyze = load_analyze_result(temp_path)
+                current_recommend = load_recommend_result(temp_path)
+                
                 # 如果处于空闲状态，不进行任何更新
                 if status_message == "请上传PDF并点击处理":
                     return {
@@ -459,6 +549,10 @@ def create_reader_ui(
                         html_display: gr.update(),
                         page_index: gr.update(),
                         page_info: gr.update(),
+                        analyze_display: gr.update(),
+                        recommend_display: gr.update(),
+                        analyze_result_state: gr.update(),
+                        recommend_result_state: gr.update(),
                         timer: gr.update()
                     }
                 
@@ -480,11 +574,19 @@ def create_reader_ui(
                             html_display: gr.update(value=f'<div class="document-viewer" style="width: 100%; max-width: 100%; position: relative;">{page_html}</div>'),
                             page_index: page_idx,
                             page_info: gr.update(value=page_info_html),
+                            analyze_display: gr.update(value=current_analyze),
+                            recommend_display: gr.update(value=current_recommend),
+                            analyze_result_state: current_analyze,
+                            recommend_result_state: current_recommend,
                             timer: gr.update(active=False)
                         }
                     else:
                         return {
                             upload_status: gr.update(value="处理完成但未找到内容"),
+                            analyze_display: gr.update(value=current_analyze),
+                            recommend_display: gr.update(value=current_recommend),
+                            analyze_result_state: current_analyze,
+                            recommend_result_state: current_recommend,
                             timer: gr.update(active=False)
                         }
                 else:
@@ -505,11 +607,19 @@ def create_reader_ui(
                             html_display: gr.update(value=f'<div class="document-viewer" style="width: 100%; max-width: 100%; position: relative;">{current_page_html}</div>'),
                             page_index: page_idx,
                             page_info: gr.update(value=page_info_html),
+                            analyze_display: gr.update(value=current_analyze),
+                            recommend_display: gr.update(value=current_recommend),
+                            analyze_result_state: current_analyze,
+                            recommend_result_state: current_recommend,
                             timer: gr.update()
                         }
                     else:
                         return {
                             upload_status: gr.update(value=f"{status_message} (进度: {int(progress)}%)"),
+                            analyze_display: gr.update(value=current_analyze),
+                            recommend_display: gr.update(value=current_recommend),
+                            analyze_result_state: current_analyze,
+                            recommend_result_state: current_recommend,
                             timer: gr.update()
                         }
             except Exception as e:
@@ -556,7 +666,11 @@ def create_reader_ui(
                 html_contents_state,
                 html_display,
                 page_index,
-                page_info
+                page_info,
+                analyze_display,
+                recommend_display,
+                analyze_result_state,
+                recommend_result_state
             ]
         )
         
@@ -570,6 +684,10 @@ def create_reader_ui(
                 html_display,
                 page_index,
                 page_info,
+                analyze_display,
+                recommend_display,
+                analyze_result_state,
+                recommend_result_state,
                 timer
             ]
         )
