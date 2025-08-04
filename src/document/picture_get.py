@@ -199,7 +199,6 @@ def _is_academic_relevant_image(page, img_rect, min_size=40):
     return has_academic_keywords
 
 
-
 def fig_screenshot(pdf_path=PDF_PATH):
     """
     提取PDF中的Figure图表（高精度截图）

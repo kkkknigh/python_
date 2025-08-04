@@ -92,13 +92,12 @@ def html_img_replace(html_file_path, output_dir="temp/html/final"):
         elif figures_match:
             page_images = figures_files  
         else:
-            # 都不匹配，选择数目多的图片
             if len(figures_files) < len(picture_files):
                 page_images = figures_files
             else:
                 page_images = picture_files
     else:
-        # 没有占位符，选择数目多的图片
+        # 没有占位符
         if len(figures_files) > len(picture_files):
             page_images = figures_files
         else:

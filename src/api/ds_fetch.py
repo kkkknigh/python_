@@ -1,7 +1,7 @@
 from openai import OpenAI
 import os, re
 
-DEEPSEEK_API_KEY = 'sk-f61e298f11be44548cad7c554c9f22ef'
+DEEPSEEK_API_KEY = ''
 
 client = None
 
